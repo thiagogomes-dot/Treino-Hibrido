@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<defs>
+  <radialGradient id="bg" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#1d1733"/><stop offset="1" stop-color="#07060d"/></radialGradient>
+  <radialGradient id="ball" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#d9d3f0"/></radialGradient>
+  <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf8f"/><stop offset="1" stop-color="#ff9f45"/></linearGradient>
+  <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="14"/></filter>
+  <filter id="glow2" x="-150%" y="-150%" width="400%" height="400%"><feGaussianBlur stdDeviation="34"/></filter>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+  <linearGradient id="pur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9b7bff"/><stop offset="1" stop-color="#5b3fd6"/></linearGradient>
+  <radialGradient id="yel" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#ffd9a3"/><stop offset="1" stop-color="#ff9f45"/></radialGradient>
+  <radialGradient id="shade" cx="38%" cy="32%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient>
+  <clipPath id="bc"><circle cx="0" cy="0" r="80"/></clipPath>
+</defs>
+<rect width="512" height="512" fill="url(#bg)"/>
+<g transform="translate(256 256) scale(1) translate(-256 -256)">
+  <!-- anel -->
+  <circle cx="256" cy="256" r="214" fill="none" stroke="#a98bff" stroke-width="22" filter="url(#glow)" opacity=".9"/>
+  <circle cx="256" cy="256" r="214" fill="none" stroke="#cbb8ff" stroke-width="9"/>
+  <!-- bola -->
+  <g transform="translate(256 188)">
+    <circle r="80" fill="url(#ball)"/>
+    <g clip-path="url(#bc)">
+      <circle r="80" fill="url(#yel)"/>
+      <path d="M-50.6 -62.0 L-46.4 -65.0 L-41.4 -67.6 L-35.6 -69.9 L-29.3 -71.8 L-22.4 -73.3 L-15.2 -74.4 L-7.7 -75.1 L0.0 -75.3 L-4.0 -71.9 L-8.4 -67.5 L-13.0 -62.3 L-17.8 -56.4 L-22.7 -49.8 L-27.7 -42.6 L-32.7 -35.0 L-37.5 -27.0 L-41.1 -34.2 L-44.2 -40.8 L-46.8 -46.6 L-48.8 -51.6 L-50.2 -55.7 L-51.0 -58.8 L-51.1 -60.9Z" fill="url(#pur)"/>
+      <path d="M0.0 -75.3 L7.7 -75.1 L15.2 -74.4 L22.4 -73.3 L29.3 -71.8 L35.6 -69.9 L41.4 -67.6 L46.4 -65.0 L50.6 -62.0 L51.1 -60.9 L51.0 -58.8 L50.2 -55.7 L48.8 -51.6 L46.8 -46.6 L44.2 -40.8 L41.1 -34.2 L37.5 -27.0 L32.7 -35.0 L27.7 -42.6 L22.7 -49.8 L17.8 -56.4 L13.0 -62.3 L8.4 -67.5 L4.0 -71.9Z" fill="url(#pur)"/>
+      <path d="M-77.8 -18.7 L-76.5 -20.0 L-74.1 -21.3 L-70.5 -22.6 L-65.8 -23.7 L-60.0 -24.7 L-53.3 -25.6 L-45.8 -26.4 L-37.5 -27.0 L-42.2 -18.9 L-46.6 -10.7 L-50.8 -2.6 L-54.5 5.3 L-57.7 12.9 L-60.5 20.0 L-62.7 26.6 L-64.3 32.5 L-67.9 25.4 L-71.1 18.3 L-73.7 11.3 L-75.8 4.4 L-77.3 -2.1 L-78.2 -8.2 L-78.3 -13.7Z" fill="url(#pur)"/>
+      <path d="M-37.5 -27.0 L-28.7 -27.5 L-19.4 -27.9 L-9.8 -28.1 L0.0 -28.2 L9.8 -28.1 L19.4 -27.9 L28.7 -27.5 L37.5 -27.0 L33.5 -19.3 L29.2 -11.2 L24.6 -2.8 L19.8 5.8 L14.8 14.3 L9.8 22.8 L4.9 31.0 L0.0 38.8 L-4.9 31.0 L-9.8 22.8 L-14.8 14.3 L-19.8 5.8 L-24.6 -2.8 L-29.2 -11.2 L-33.5 -19.3Z" fill="url(#pur)"/>
+      <path d="M37.5 -27.0 L45.8 -26.4 L53.3 -25.6 L60.0 -24.7 L65.8 -23.7 L70.5 -22.6 L74.1 -21.3 L76.5 -20.0 L77.8 -18.7 L78.3 -13.7 L78.2 -8.2 L77.3 -2.1 L75.8 4.4 L73.7 11.3 L71.1 18.3 L67.9 25.4 L64.3 32.5 L62.7 26.6 L60.5 20.0 L57.7 12.9 L54.5 5.3 L50.8 -2.6 L46.6 -10.7 L42.2 -18.9Z" fill="url(#pur)"/>
+      <path d="M-64.3 32.5 L-58.7 33.9 L-52.1 35.2 L-44.8 36.3 L-36.7 37.1 L-28.1 37.9 L-19.0 38.4 L-9.6 38.7 L0.0 38.8 L-4.7 46.1 L-9.1 52.8 L-13.3 58.7 L-17.0 63.8 L-20.3 68.1 L-23.1 71.3 L-25.5 73.5 L-27.2 74.7 L-32.0 71.8 L-36.8 68.1 L-41.7 63.5 L-46.6 58.3 L-51.3 52.5 L-55.9 46.2 L-60.3 39.5Z" fill="url(#pur)"/>
+      <path d="M0.0 38.8 L9.6 38.7 L19.0 38.4 L28.1 37.9 L36.7 37.1 L44.8 36.3 L52.1 35.2 L58.7 33.9 L64.3 32.5 L60.3 39.5 L55.9 46.2 L51.3 52.5 L46.6 58.3 L41.7 63.5 L36.8 68.1 L32.0 71.8 L27.2 74.7 L25.5 73.5 L23.1 71.3 L20.3 68.1 L17.0 63.8 L13.3 58.7 L9.1 52.8 L4.7 46.1Z" fill="url(#pur)"/>
+      <circle r="80" fill="url(#shade)"/>
+    </g>
+    <circle r="80" fill="none" stroke="#ffd9a3" stroke-opacity=".7" stroke-width="2.5"/>
+  </g>
+  <!-- rastro do pingo -->
+  <g stroke="#ffb86b" stroke-width="10" stroke-linecap="round" fill="none" filter="url(#soft)" opacity=".8"><path d="M206 296 q50 18 100 0"/></g>
+  <g stroke="#ffcf8f" stroke-width="9" stroke-linecap="round" fill="none" opacity=".95">
+    <path d="M206 296 q50 18 100 0"/>
+    <path d="M226 318 q30 9 60 0" opacity=".6"/>
+  </g>
+  <!-- haltere -->
+  <g transform="translate(256 372)">
+    <g filter="url(#glow)" opacity=".75">
+      <rect x="-118" y="-11" width="236" height="22" rx="11" fill="#a98bff"/>
+      <rect x="-102" y="-46" width="30" height="92" rx="13" fill="#ffb86b"/><rect x="72" y="-46" width="30" height="92" rx="13" fill="#ffb86b"/>
+    </g>
+    <rect x="-118" y="-10" width="236" height="20" rx="10" fill="#f2effb"/>
+    <rect x="-102" y="-46" width="30" height="92" rx="13" fill="url(#plate)"/>
+    <rect x="72" y="-46" width="30" height="92" rx="13" fill="url(#plate)"/>
+    <rect x="-70" y="-32" width="22" height="64" rx="10" fill="#f2effb"/>
+    <rect x="48" y="-32" width="22" height="64" rx="10" fill="#f2effb"/>
+  </g>
+</g>
+</svg>
