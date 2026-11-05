@@ -771,7 +771,7 @@ function renderSheet(){
     ${PWA ? `<h4>Lembretes de treino</h4>
     <div class="optrow"><p>Manhã<small>Primeiro lembrete do dia</small></p><input type="time" data-k="ram" value="${remind().am}" aria-label="Horário do lembrete da manhã"></div>
     <div class="optrow"><p>Noite<small>Se o treino já foi feito, vira o check-in do joelho</small></p><input type="time" data-k="rpm" value="${remind().pm}" aria-label="Horário do lembrete da noite"></div>
-    <div class="optrow"><p>Receber neste celular<small>${S.pushCode ? 'Celular inscrito. Os lembretes começam quando o servidor de push estiver ligado.' : 'Inscreve este celular para receber os lembretes.'}</small></p><button class="btn sm ${S.pushCode ? 'ghost' : ''}" data-act="${S.pushCode ? 'copypush' : 'push'}">${S.pushCode ? 'Copiar código' : 'Ativar'}</button></div>` : ''}
+    <div class="optrow"><p>Receber neste celular<small>${S.pushOn ? 'Ativado. Os lembretes chegam nos horários acima, todo dia.' : 'Liga os lembretes de manhã e de noite neste celular.'}</small></p>${S.pushOn ? '<button class="btn sm ghost" data-act="pushtest">Testar</button><button class="btn sm ghost" data-act="pushoff">Desligar</button>' : '<button class="btn sm" data-act="push">Ativar</button>'}</div>` : ''}
     <h4>Backup dos dados</h4>
     <div class="optrow"><p>Copiar backup<small>Leva seu histórico pra outro aparelho ou versão do app</small></p><button class="btn sm ghost" data-act="export">Copiar</button></div>
     <textarea class="bk" id="bk" placeholder="Cole aqui um backup para importar" aria-label="Backup"></textarea>
@@ -837,16 +837,43 @@ function askNotifOnce(){
   }catch(e){}
 }
 const remind = () => Object.assign({ am:'06:00', pm:'21:00' }, S.program.remind || {});
-const VAPID = 'BE5B0Ayjsno89XmRhys7_bUgZcSjtb_AasPslLLp7Cjj-YlcSKsTDv03IlL5WrIKqlOns_mmAQC013x5cdXITJg';
+const VAPID = 'BNZaASVC1qqscvLwT2pBtH8cNoaVsdG2TypnZvv0ouv_FaBLsPbbY9OP4ATlRK99LpzKeZ-i38FQc2IOeJy8EV8';
 function b64u(str){ const p = '='.repeat((4 - str.length % 4) % 4), b = atob((str + p).replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(b, c => c.charCodeAt(0)); }
+const PUSH_API = 'https://treino-th-push.thisangom-91a.workers.dev';
+async function pushReg(){ return Promise.race([navigator.serviceWorker.ready, new Promise((_, r) => setTimeout(() => r(new Error('sw')), 8000))]); }
+async function api(path, body){
+  const r = await fetch(PUSH_API + path, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+  if(!r.ok) throw new Error('api ' + r.status);
+  return r.json();
+}
 async function subscribePush(){
   try{
     if(Notification.permission !== 'granted' && await Notification.requestPermission() !== 'granted'){ toast('Permita notificações pra receber o lembrete'); return; }
-    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, r) => setTimeout(() => r(new Error('sw')), 8000))]);
-    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64u(VAPID) });
-    S.pushCode = JSON.stringify(sub); localStorage.setItem('treino-push', S.pushCode);
-    renderSheet(); toast('Celular inscrito nos lembretes');
-  }catch(e){ toast('Não foi possível ativar. Abra pelo app instalado e tente de novo.'); }
+    const reg = await pushReg(), key = b64u(VAPID);
+    let sub = await reg.pushManager.getSubscription();
+    // inscrição antiga feita com outra chave: troca
+    if(sub && sub.options && sub.options.applicationServerKey && bytesToB64(sub.options.applicationServerKey) !== bytesToB64(key)){ await sub.unsubscribe(); sub = null; }
+    if(!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:key });
+    await syncPush(sub);
+    S.pushOn = true; localStorage.setItem('treino-push-on', '1'); localStorage.removeItem('treino-push');
+    renderSheet(); toast('Lembretes ativados');
+  }catch(e){ toast(String(e).includes('api') ? 'Servidor de lembretes não respondeu. Tente de novo.' : 'Não foi possível ativar. Abra pelo app instalado e tente de novo.'); }
+}
+function bytesToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+async function syncPush(sub){
+  sub = sub || await (await pushReg()).pushManager.getSubscription();
+  if(!sub) return false;
+  const r = remind();
+  await api('/subscribe', { sub:sub.toJSON(), am:r.am, pm:r.pm, tz:new Date().getTimezoneOffset() });
+  return true;
+}
+async function pushTest(){
+  try{ const sub = await (await pushReg()).pushManager.getSubscription(); if(!sub){ S.pushOn = false; renderSheet(); return; } const r = await api('/test', { endpoint:sub.endpoint }); toast(r.ok ? 'Lembrete de teste enviado' : 'O teste falhou (' + r.status + ')'); }
+  catch(e){ toast('Servidor de lembretes não respondeu'); }
+}
+async function pushOff(){
+  try{ const sub = await (await pushReg()).pushManager.getSubscription(); if(sub){ await api('/unsubscribe', { endpoint:sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } }catch(e){}
+  S.pushOn = false; localStorage.removeItem('treino-push-on'); renderSheet(); toast('Lembretes desligados');
 }
 function copyText(t, msg){ const ok = () => toast(msg); if(navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => toast('Não deu pra copiar automaticamente')); }
 async function markTrained(){ try{ const c = await caches.open('treino-state'); await c.put('/last-session', new Response(ymd())); }catch(e){} }
@@ -955,7 +982,8 @@ document.addEventListener('click', e => {
   else if(act === 'savepain'){ const p = { id:uid('p'), date:ymd(), ts:Date.now(), value:S.painDraft, ctx:S.painCtx }; S.pain.push(p); savePain(p); render(); toast('Registro salvo'); }
   else if(act === 'settings'){ renderSheet(); document.getElementById('sheet').classList.add('on'); }
   else if(act === 'push'){ subscribePush(); }
-  else if(act === 'copypush'){ copyText(S.pushCode, 'Código copiado. Cole no secret PUSH_SUB do GitHub.'); }
+  else if(act === 'pushtest'){ pushTest(); }
+  else if(act === 'pushoff'){ pushOff(); }
   else if(act === 'notif'){ if('Notification' in window) Notification.requestPermission().then(() => { renderSheet(); if(Notification.permission === 'granted') toast('Aviso do descanso ativado'); }); }
   else if(act === 'testrest'){ swPost({ type:'rest', end:Date.now() + 5000, next:'teste do aviso', force:true }).then(ok => toast(ok ? 'Bloqueie a tela: o aviso chega em 5 s' : 'Service worker ainda não está ativo. Recarregue o app.')); }
   else if(act === 'testsound'){ unlockAudio(); beep(); }
@@ -998,7 +1026,7 @@ document.addEventListener('change', e => {
   if(k === 'start' && t.value){ S.program.start = t.value; saveProgram(); render(); }
   if(k === 'prior'){ S.program.prior = Math.max(0, parseInt(t.value, 10) || 0); saveProgram(); render(); }
   if(k === 'pain') render();
-  if((k === 'ram' || k === 'rpm') && t.value){ S.program.remind = Object.assign(remind(), { [k === 'ram' ? 'am' : 'pm']: t.value }); saveProgram(); toast('Horário salvo'); }
+  if((k === 'ram' || k === 'rpm') && t.value){ S.program.remind = Object.assign(remind(), { [k === 'ram' ? 'am' : 'pm']: t.value }); saveProgram(); if(S.pushOn) syncPush().then(() => toast('Horário salvo'), () => toast('Salvo no app; o servidor não respondeu')); else toast('Horário salvo'); }
 });
 
 /* ---------- início ---------- */
@@ -1006,7 +1034,7 @@ document.addEventListener('change', e => {
   const L = lsLoad();
   S.program = L.program || defaultProgram();
   seed31();
-  S.pushCode = localStorage.getItem('treino-push') || '';
+  S.pushOn = !!localStorage.getItem('treino-push-on');
   S.drafts = L.drafts || {}; S.sessions = L.sessions || []; S.pain = L.pain || [];
   Object.keys(S.drafts).forEach(k => { if(!S.drafts[k] || S.drafts[k].date !== ymd()) delete S.drafts[k]; });
   const h = location.hash.slice(1); if(['treino','progresso','joelho','guia'].includes(h)) S.tab = h;

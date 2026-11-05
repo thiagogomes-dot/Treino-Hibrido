@@ -1,0 +1,6 @@
+{
+  "name": "treino-th-push",
+  "private": true,
+  "type": "module",
+  "scripts": { "deploy": "wrangler deploy", "logs": "wrangler tail" }
+}

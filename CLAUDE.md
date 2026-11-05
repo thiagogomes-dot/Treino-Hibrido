@@ -31,9 +31,26 @@ Clone local neste PC: `C:\Users\Thiago Gomes\projetos\Treino-Hibrido` (criado em
 | `index.html` | O app inteiro (~970 linhas): CSS, plano de treino, estado, telas, timer, push. |
 | `sw.js` | Service worker: cache do app (rede primeiro), fontes Google em cache, recebe push dos lembretes, abre o app no clique. |
 | `manifest.webmanifest` | Manifest PWA (`display: standalone`, retrato, ícones 192/512). |
-| `lembrete.mjs` + `package.json` | Script Node (`web-push`) que envia UM push para UMA inscrição. Lê `SLOT` (`manha`/`noite`), `PUSH_SUB`, `VAPID_PUBLIC`, `VAPID_PRIVATE` do ambiente. Pensado para rodar num GitHub Actions agendado. |
-| `icons/` | Ícones usados pelo app (192, 512, apple-touch, favicon). |
-| raiz: `icon-*.png`, `apple-touch-icon.png`, `favicon-32.png`, `maskable-512.png`, `icon.svg` | Cópias soltas. Só `maskable-512.png` não existe em `icons/`; as demais são duplicadas e não usadas. |
+| `push-server/` | **Servidor dos lembretes** (Cloudflare Worker, plano grátis). Ver "Lembretes" abaixo. |
+| `icons/` | Ícones (192, 512, maskable, apple-touch, favicon, badge) + `avatar.svg` e o script `avatar-gerar.mjs`. |
+| ~~`lembrete.mjs` + `package.json`~~ | Removidos em 2026-11-05 (caminho GitHub Actions abandonado; chave VAPID antiga perdida). |
+
+## Lembretes (servidor de push)
+
+- Cloudflare Worker `treino-th-push` na conta do Thiago (thisangom@gmail.com), escolhido em 2026-11-05 por ser
+  grátis, pontual e aceitar horários do app. URL: https://treino-th-push.thisangom-91a.workers.dev
+- Rotas: `POST /subscribe {sub, am, pm, tz}`, `POST /unsubscribe {endpoint}`, `POST /test {endpoint}`; só aceita
+  origem `thiagogomes-dot.github.io` e `localhost:8790`. Cron a cada minuto manda `{slot:'manha'|'noite'}` no horário
+  local de cada celular (tolera 20 min de atraso, 1 vez por dia). Tudo numa chave só do KV `SUBS` (`subs`) para caber
+  nos limites grátis (1 leitura/min). 404/410 do serviço de push remove o celular.
+- Web Push sem dependências em `push-server/src/webpush.js` (aes128gcm + VAPID ES256 com WebCrypto). Testado contra
+  a biblioteca `http_ece` em 2026-11-05.
+- Chaves VAPID novas (2026-11-05): pública no `index.html` e no `wrangler.toml`; **privada só em
+  `~/.config/treino-th-vapid.json`** e no segredo `VAPID_PRIVATE` do Worker. Nunca no repositório.
+- Publicar o Worker: em `push-server/`, `npx wrangler@4 deploy` (no PowerShell, `npx.cmd`; a política de scripts
+  bloqueia `npx.ps1`). Login: `npx wrangler@4 login`. Logs ao vivo: `npx wrangler@4 tail`.
+- No app (Ajustes): horários Manhã/Noite, Ativar/Testar/Desligar. Mudar horário reenvia ao servidor.
+- Push do GitHub: `git push` pede login pelo Git Credential Manager no navegador (conta thiagogomes-dot).
 
 Histórico: 5 commits de 2026-10-27, todos por upload na web do GitHub. O app nasceu como Artifact do claude.ai
 (restos: `window.claude.use('db')`, `initDb`, "Salvo na sua conta"); no GitHub Pages esse caminho nunca roda.
