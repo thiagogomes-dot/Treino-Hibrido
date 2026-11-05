@@ -4,14 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07060d">
-<title>Pump & Pingo</title>
-<link rel="icon" href="icons/favicon-32.png">
+<title>Treino TH</title>
+<meta name="description" content="Treino híbrido do Thiago: musculação PPL, futevôlei e protocolo do joelho.">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="application-name" content="Pump & Pingo">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="application-name" content="Treino TH">
+<meta name="apple-mobile-web-app-title" content="Treino TH">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -202,6 +205,16 @@ input[type=range]::-moz-range-thumb{ width:26px; height:26px; border:0; border-r
 .timer{ position:fixed; left:12px; right:12px; bottom:calc(84px + env(safe-area-inset-bottom,0px)); max-width:496px; margin:0 auto; padding:10px 10px 10px 14px; border-radius:22px; display:flex; align-items:center; gap:12px; z-index:20; transform:translateY(20px); opacity:0; pointer-events:none; transition:transform .3s, opacity .3s; }
 .timer.on{ transform:none; opacity:1; pointer-events:auto; }
 .timer.end{ border-color:var(--acc); box-shadow:0 0 36px -4px var(--acc); }
+/* últimos 10 segundos: tudo vermelho e pulsando */
+.timer.warn{ border-color:#ff3b5c; box-shadow:0 0 40px -4px #ff3b5c; background:linear-gradient(155deg,rgba(255,59,92,.28),rgba(255,59,92,.08)); animation:tpulse 1s ease-in-out infinite; }
+.timer.warn #tclock{ color:#ff3b5c; text-shadow:0 0 16px rgba(255,59,92,.8); }
+.timer.warn #tlabel{ color:#ff9aab; }
+.timer.warn #ringfg{ stroke:#ff3b5c; }
+@keyframes tpulse{ 50%{ box-shadow:0 0 60px 2px #ff3b5c; } }
+.install{ display:flex; align-items:center; gap:12px; padding:14px 16px; margin-bottom:12px; }
+.install .tx{ flex:1; font-size:13.5px; color:var(--muted); } .install .tx b{ display:block; color:var(--text); font-size:15px; }
+.install .btn{ width:auto; flex-shrink:0; }
+.optrow input[type=time]{ height:42px; border-radius:12px; border:1px solid var(--stroke2); background:rgba(0,0,0,.3); padding:0 10px; color-scheme:dark; }
 .ring{ width:44px; height:44px; flex-shrink:0; }
 .timer .tt{ flex:1; }
 .timer .tt b{ font-family:var(--display); font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; display:block; line-height:1.1; }
@@ -415,39 +428,13 @@ function seed31(){
 const LS = 'treino-hibrido-v1';
 function lsLoad(){ try{ return JSON.parse(localStorage.getItem(LS)) || {}; }catch(e){ return {}; } }
 function lsSave(){ try{ localStorage.setItem(LS, JSON.stringify({program:S.program, drafts:S.drafts, sessions:S.sessions, pain:S.pain})); }catch(e){} }
-let DB = null, BASE = null, draftTimer = null;
-
-async function initDb(){
-  try{
-    if(!window.claude || !window.claude.use) return;
-    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-    if(!db || !user) return;
-    const id = await user.id(); if(!id) return;
-    BASE = 'data/users/' + id;
-    const [p, d, ss, pp] = await Promise.all([
-      db.doc(BASE + '/program').get(),
-      db.doc(BASE + '/drafts').get(),
-      db.collection(BASE + '/logs/sessions').limit(1000).get(),
-      db.collection(BASE + '/logs/pain').limit(1000).get()
-    ]);
-    DB = db; S.sync = 'cloud';
-    if(p.exists) S.program = JSON.parse(JSON.stringify(p.data())); else await safe(() => DB.doc(BASE + '/program').set(S.program));
-    seed31();
-    if(d.exists && d.data().drafts) S.drafts = JSON.parse(JSON.stringify(d.data().drafts));
-    const rs = new Map(ss.docs.map(x => [x.id, x.data()]));
-    for(const s of S.sessions) if(!rs.has(s.id)) await safe(() => DB.doc(BASE + '/logs/sessions/' + s.id).set(s));
-    S.sessions.forEach(s => rs.set(s.id, s)); S.sessions = [...rs.values()].map(x => JSON.parse(JSON.stringify(x)));
-    const rp = new Map(pp.docs.map(x => [x.id, x.data()]));
-    for(const s of S.pain) if(!rp.has(s.id)) await safe(() => DB.doc(BASE + '/logs/pain/' + s.id).set(s));
-    S.pain.forEach(s => rp.set(s.id, s)); S.pain = [...rp.values()].map(x => JSON.parse(JSON.stringify(x)));
-    lsSave(); render();
-  }catch(e){ S.sync = 'local'; render(); }
-}
-async function safe(fn){ try{ await fn(); }catch(e){ if(e && e.code === 'quota_exceeded') toast('Armazenamento cheio. Os dados ficam só neste aparelho.'); S.sync = 'local'; } }
-function saveProgram(){ lsSave(); if(DB) safe(() => DB.doc(BASE + '/program').set(S.program)); }
-function saveDrafts(){ lsSave(); clearTimeout(draftTimer); draftTimer = setTimeout(() => { if(DB) safe(() => DB.doc(BASE + '/drafts').set({drafts:S.drafts})); }, 800); }
-function saveSession(s){ lsSave(); if(DB) safe(() => DB.doc(BASE + '/logs/sessions/' + s.id).set(s)); }
-function savePain(p){ lsSave(); if(DB) safe(() => DB.doc(BASE + '/logs/pain/' + p.id).set(p)); }
+// tudo fica no aparelho (localStorage). Backup por copiar/colar nos Ajustes.
+function saveProgram(){ lsSave(); }
+function saveDrafts(){ lsSave(); }
+function saveSession(s){ lsSave(); }
+function savePain(p){ lsSave(); }
+// pede ao navegador para não apagar os dados do app quando faltar espaço
+function persistStorage(){ try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){} }
 
 /* ---------- lógica ---------- */
 const blankSets = ex => Array.from({length:ex.sets}, () => ({w:'', r:'', done:false}));
@@ -517,11 +504,11 @@ function render(){
   const ci = cycleInfo();
   const pct = Math.min(100, Math.round(ci.done / ci.planned * 100));
   const tpct = Math.round(ci.elapsed / ci.total * 100);
-  const syncTxt = S.sync === 'cloud' ? 'Salvo na sua conta' : 'Salvo neste aparelho';
+  const syncTxt = 'Salvo neste aparelho';
   let html = `
   <header class="top">
     <div>
-      <div class="brand"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAdPElEQVR42oV6aXAd15XeOffe7n47locdIEGAAgjuFEVJpBbSlmRZki2Vl9iOF6Umf2KPa1JxqrL9SaqSmsmMXZXMpOZPyskkzsxUxvbEizQjUx7LIkVJpkSKFElxBUmQIDZix9u7+957Tn509wMoW3aj8NDoBrrPuffcc7/vOwczqXYAAEQEhOQMABGiC4gAsH6OyW2BiM0r0a/JLWzeguRgYACODmieMTHzhlsU3wKO/wOYk/9O/gwgugEc3VTrNv9W6zG+iImFiCA2mh6dCxAoEFEkrkYPjowiJmJmAopNZ2y6AUgAgpkRASNjkYERgRkQkJGRARCZGQGibwRmtW7lR1rfHHhsjq7ApvVCCCFQSKGEkEJIXH8AwL1TAAzMzGQtWUuGmIiIGZmJGRko9ggYoz9FBoaP8CG+rpqvwnve+VHWR0MrhBCIQgoppVLSEUIAghTCcbyUl8t4hZSXd920QAUAxDYM635QaQTlRlDVOhAkFbtMZKy21liyzESEwATIAMQMiAAcDXXiA3ASJlEsISCrDYGPSbisWy/i6yhEYjoKFFIKqZSrpIMCHOUUcp09xa393WN9nSMd7X0thfZ0OuO6rhAIAEQchmGjUS9XVhdXZucWrk8vXJlfvlmqLEojiDxjtbGhtZbJElMUP0QULSOCxAdEjBcDIkI0EZhNd/ym4Pk161EgCCmkkNJRriNdlJhNFzb37to+/Pjolgf6+gZaWqWbBikhilzm5pBFix2YgSwEDSit2bm56fFbZy9PnLgzd7HeKJNlbUNtQrKWyEbrhIgAGICJGTYs7o0LGrPpjvXhX88ekfmIIDD6wmjUHddJCSFy2ZZtWx59cNenxkb2dXQrJwXAoAOoV6FS8SuVcq1eDoK61iEgOMr1vEw2U8jnCvlCKp0D1wNA0D4sLZhr4+dPX/z7q7ffrtZKRBRq3xgdBxVbJmYgBo4mppmyktzAmE13bhj+KHjEBuuFQCFQSikdJ+Uo13Pd+wYfOvLAV3bvfKCtE4SCoAGri2Z6ZvLO3JW5xeur5ZlaYzXUdUuaiABACCGF4zrpbKqtraW/t2NkU9/2gf4t7R3KywAZWF2EDy6dOXHm/16fPBWGYWhCrX1rLbElJiba4ANxM6sBMwPmMp0fCh6Mwr1pvZBKKtdNO8ppb+k+fODFxx/6TM+AEgrqZZi6s3z5+snx2ycXViYaftmSheaij563IZ0zMwBLIdOpQlf78MjgwZ0jhzYNdmQKQAbmp82bp156472/XCnNG6ODsGGsIfqQD/ShQNroQHNXalovhZBKOikvo5Tauun+5z/2rT17Rr0ChzWcnFg5feHVSxPHVtZmyFpAEQ9JHIK4Ia3FO1gUBJhcE1K2t/Tt3PrxB/c8Ozjc7mXZL+OFC+N/d/zPbk69b4zxg7qxmsgS29iH5pOS50nXyTWHX4AAgQKS7C6Ukk4qlXVdd//2Z7786X+/fU+f8mB5Bk786rVXTvz55ZsnosAlJiILDAJBCJRRfpXRIWQUhhiNHFuyRDbawWr10uTdCzfuvBfWvNbs1nwRe/uLQ92HS5WlxdVbKBSx5fVsABxvcwyJ0dJ1svcO/4ZEKZ2Ul3Nd59DeL3zxU/9q4D6PDN64vPTS63/+9vkfrJWXrSUiY8kCsBRCSqGUcpTyXDftuZ7req7jOY6rlCOFQIEoILKA2ZJNPIFqvXRz9vT84nSrO9ZWzBS73aGex6vV2tziVQRJZLmJKdY/40O6ThYRAUS0bgVKgUIIpZRKeVnPdQ7t/eIXn/sXXYMc1sTZM1d+/Nof35g8bTQZG1prGAgB48lynJTrZVJpz8mmvHwul2/N53KZrFIZQFcIpaQQ0R6bgB8ismSIiAgWlm/emj2fk1s7Ozpbu3hL96FypTK7dAVRRH42UVC8pSEDgPScXJLy71m1KTfjOs7925/50qf+ddcg+2V58p3TPz32JwvL08aS1gGTBWYhhJTCdZTneplUOpXKdRRb9u/qfupQ7ycPdT26t+/gro6HduW2bspnMl7dR2NQCoixEMXJnthassCi2lidmH0vjZt7Oze1dNHmjocXl+cWlm8iCGIbL99oX0NmAIwcSABZHDxKOq6Tch136+b9X/n0f9h0nxvU5MmTp19649tr5WWjQ20CZgYEgSikdByV8rxsOpPPFR7YM/jso4/sGHwkJfYvLD400rOWlbmrE59uyw5t7R8aHS6i9FdLPjATkaXI+tgbQ4YZQu3fnj2bVUN93QMtndDbcuD27AdrlXnm2G3kjSHE0nPzUdoRcdpRjnJcN1Vs6/nSM/9x+55ea/Dse1d+cuw/r5aWtQm1DokJAASiFEIplfK8fDrT2tL61KP7R/u/MDv70O2Z7pvTHVs3Xd+z/XQhNz+70PHm+T1z89316rbRoS1dnbW5hVWy2pC1ZON5YGLmaHFro6fmzxczu3p6u9o63IIzdm3yrSBsMFmiaBKYOQmhlJeLhjLKm0pKz0t7rvf0oW8eeewx5fH1y8t/+4s/Wlia0ibUOgCmKBlIIaSUnuvk0+lcvv33PjP8sT3bjh7fB6Iahrxt6PZzT74B1gWQWzddXlhonV0qhGFtaq7jS4/d7Ow2lyZ8soEx1trIegJmiOEDhKE/tzy+qXiooyfd0V70a97NqXeZgaxJEnIEUlgkQDrOnkq5QoiRzQ8ffvgFr0DLs/zq29+dmR83RmsdEBEn+xEASCE813G91JOHBp8/3Nrdfrutda5cwZRXfvqJcyyyIDxAjyH93GOvu3JltSQKqalu79yn99qPP7zJcz3PUULE+3/0XCLSOjBGz8yPv/r2d5dn2SvQ4YdfGNn8sBBCKTdmHU2c1kRAiBhhzFymcOTAi90DTlgTJ8+8dunGMWso1L4lG1GSJvdRUrrK2dTX/aUniuQbmYO922+trPGzT13JdhoED12BDiM7ufbyZx5/fWEZ9205m8oZv1R94UF3oK/bUUpJGYdzTHnIWhtq3xq6dOPYyTOvhTXRPeAcOfBiLtOilCtjyhFvlDLl5gVKRCGEdB1PKbln5BPPPvmVTIEnrq2+fPy/rK4thtqPkh0CR0hbCOFIlU55qVThs08OHdwfIln0VGuOCdTjjy2GftZaYUJptbQWbcPpLS5Uq/ix3WcymSqboOCUy1T84MaaNYE2MSXgJuqMv7BUmxnuPtzRmypk+u5MT8wtjTODJZvEEasmG4x2z2y68NDuF9q6oF7Gd869Mrc4Ya2J9vMo8zCDRI62PoGytZDbOdh17cqmpVJfLWhXrtg+svyjl59Rkq0V1gJZJstIJtS4d/TtU7e+ZG9B2p3Ly/Hh7rW2lkKtXk5iCJoOEICxIK2aW5x49/wrmwZfbOuCh3a/cOXWCWvXpJDEBMgIqOJtGIWUSgjc3Lt7bHSvkHBncvnC9X8wxoY6pChXxNg+zsUCEUD2d6Wv33lq4vZ9qbQNjXzsgfMjwxfOXhwNQk8ISxaJgCyH2vNkbfvg8XLtE2+OP5H2Bsu1fVv6L/UUJ6dmpUBs8s0E5xMBaB0KIS5c/4eHJp8b21McG927uXf35ZtvSakMWUZCRhGBCCFQCqWU2rH1SLFbhQ24eO3NpdUpa20UPLwRkEVgBBFAtOYzOlDG1Iyu59JLe0fOOG5p7+jZcpXCIPCDwA+CMPQrNX7wvl+6XumBoddbUtNal8ksN+q2Jechiub4N6kKQbRRGGvt4srUB9feDOtQ7FI7ho8opaRUApusCyIVQaAQhVzntqEH3RQsL5orE29pHdooeJo6yDrRiogSZlO2kJqvVM3KGu7ccj6dXaSy3DH8QUvm7loJ/Yb2G7pUFu2ZO7uHTlE9m8ms7Og7uVaBaj10YdZzbAK146HZ+CYia63WOrwy8dbyknHTMDp8oJDrTEg5YhMBCSERobc40tfXDwBT07fmlsaJwJJJJJB1DsGJkANgA203dd2u1azC1X3DF6BBoAMpyo/uOlWp2EZdNxphpWaP7DqmVJUJKHR29J5RMF+p+e3pW1pbYiJIxiV+fNMRsmSIeW5pfGr6NgD09w70FkcQQQoZASCRJFAlhBjo3tHSKrUPt6cv1hpr0Wa/IS6TKWCOQAywubtk+jsnHVXe0nUzn79LDStsnaq8bculrb3jK2uwsipGei5v33KBGi4ANQKR8xZ6CldNuNiRn14sEbCO3sJNLYt53QMiIqrV125Pf6B9aGmT/d3bI6gfJVMVL2EhXOX1dY14aSivwszCVW10zIaSVcXQVGNiPMxgpudr1bBycMeFkf5J4BpaASyBFYN55sG3Tl/qYeJPPXicLVgCa402Gm19c+v7q+15DWZu0We2lHjQjFHgSATgiGloo2cWrtarUGiDvq4RV3nWWkREQNXUqlJerrPYLxRUyv7S2h2mGJlAIgDAhgFiJktkjCmVV09c7P/cwXOTCwOl5YGMU3FUKEQNAugduHtk1yYA6N18nUs5oEYYQrUOq5XOUPPB0XOX5/pX1+YsWWvtBqrVfBEjigQgqaW1qUrFb+1IdbYPpLxcI2hElqtEzYR0qlDItyFAubJWrS9H+yJwwkGBgZHjKSBitGRDbbSu//LU8tN721eqxaMfvNiRW3BkmFINV/mM0Nc7D8Avv/n7RKYRiqovar6dW8sOOD/s3J5+51Qt1PVQG5ssM4inFxAjsMYY4zyo1pfL5TXEnpZCWzpVWKssRruHAgQEAQBpL5/JZACgWiv7QQ1iBp0srSTTIYgoARGRNjrQ4dTs7F8fb/vGU29dmuycmN+ZUqGldgRo6PSLj75JTEfPPeaqsrYh2UrFt1745v0Pn3vj+tbJ6WvaGGNNREqbazdRARgBGaMtgf2gWq2VAXoymUzKywMAggAElWgp7LoZ13WJwA9qxobNJbUO/SAeFQCM2Iix1g9Cz6m/fvJWb/G+Zw8c/R9HxYot5tJhpZE7dN/R3vxZY2lXT9uvru9PqeXVqtX1yX/82PHLpfveeO9OoBt+qI3dsAI2vAiSSY/mxFjtBzUicF3XczORtouAorm9CpRCCAAIddCUxJqm3+NGBOGZLNnQ6FrDr9ZX/+bo5OvX7POPvM769rVb9Qye29v3s/llml+2O7peceyZizfW6uXxFx45Mxn0//TYXK2x2vBDbYxtUpoNb+R73w7ARDbUQaQyCZRNsxX87iPR6BFiQRIBgJmYkIy1gQ6rDSnE4t/+nB7e2/Pw/edv3Ol/fPAX9dpirQHGWAT/yMhLbvqJsaGlC3fVqQszdX+17oeh1ibBcBvKAQn7xfUfv+VQzfoBkSEiAOk6XjQVHxYAmpoOMyATkGAkImNtGAY1gUKsvHs+vDVd3jE8N2V68rLTTflE7BtVJtXWPnH8/fL80mqga3U/iKwnpniRJvkzfn5id9MAIYTreABARESmKWyp5vIPwnoYhkI4npeR0oF1VQrW03+iymP8wcxkmQzZUGs/FEriatmcvli56KUyGddzFTAEYaNWD+p+IzSh5SAItTax9UDMQNDMnYkTGL8qIi0AAFI6npcRAsIwDMJ6Ewwo4Eg9BT+o1Ot1gGw+25JyswBL0frmRKeP9JxmOQfXwRcRk2W7Wm74gW3JUz5LQmqqiXodAdgSa0va6kotKFX9RhAqyQy0niGwGTcASQUGm7I2IACk3Gw+2wIA9Xq9EVQi/gPMKiH7UPdLpfIqQ2ch35rLFBEnE5yI8fObRa8kLAXGzDrKuf/u9+4HJd89v7S0GvqBbqyHASOA54rtwy0H990Hxnz7/7yPAIAcacgYb/LrtZfmByZScy5TLORbGaBUXmn4pQjrcRJCxMCNoLq4Mk1mNF9IdbRunph+P6oXReEiOLYjeqrYoONJiUIgIruOeOETw//k0yPVaji/7K+WgmrDAkAurdpa3O5iKpdz66H9u1/cRIjkS2QGZmREIZiaMQogYpYSUxUU2NG6OV9IkYHF5ZlGUG2CJcUQITMbGn92fjxoPJHJQX/XmJKvWEEaBSIl6SDa82LspKRQifQppXCU+qP/fe6vjt68f6xr133tm3tyxYLb1S4BoBHa+ZXg9JXlizdW3r+ycGe+4rpSG0aUVqARFg1YYiBgAZRMKsYlRRGJnAPdY5kc+A2YXRgPjU9kI5ipYmRpLUk5NX+5tGa7B+TQwO5splXrJSEEr487R6MiUSglHCWJEUF4nhN5knfVcjmYW/afO9w+t9y4dHutEVgASHuyvcXb3Nf+i3dnlit+W4sXhkYqYbRp+BpReB7qEAyQZRKMcb6LWasQQmQzLVsGdjspWJmyU/OXiIhslH9JNWG3w87c0vjM7HT3wOCmTUN9HaOlypISislG9UMAEdEf5QjXUflM6pG9/dmsd/HGarWuo8wrJK9V/bNX5ke3tA/15VxHAkCo7dKaf/bq/FolSKdcKdB1HCJqybk7traWy/6vzs/URRBogzpS0DHKGohCKYUC+jpGNw9sAYCZuam5pevA3CQqagPqplJ14drEqd17Boudavvw4ZtT7zEBsbXWCARERkQlRMpVSqlvfXnvVz+/E5jPnV/6rz+4tlaqGUtCqmrd/vAXN6QUnitdJQEgNDYIrbWU9lQ2kyJrlBRtrbl/+9WxHTvbgfF/ff+D//b9cwKxwSaWuUAwg5RKSddV7vbhw+0dTujDtZunS9WFjZKk9CJ1OilZA/CurZ9s7RDCdl679ataoxRtAJFqJJVwHJXx3K5i4Zuf3daSQa4F3a3KFsYOffzpTDqzuLCoHOV5ylESGCwDMQiBKdfJZDwv5Xme+9jhw888/9yWntzhEeJGAGDbs+6xs4taW4pUZxAQLzNHKae7Y8uzR77RM5BZmDGvHP/v80u3tNHGmiSEItrA1lrN5E7Onb88fq574MDmwY49o59cXP2fyT5PAkFJkXJULpfu6iiAtagDsKQtP/ncZ9sH+h869PjKyh/Ozc0HYai1ERGbA0BEKYTjKM91+/p6/unXv1Hsyi1PTZmJ7zoSUVuwtrujEGhriYHRACEDgFDKVUruGX16cLBIFq6Mn5ucO88M1hpmGyVPFeswTETWWF2rl09d+Mm+XQfae/jgvucvTbw+tzABQMxWCnSkSKXctKt6il1pR0Log2FHuspxS2vWUc7Ytl0C07V63Q8CY2IZTyAqJVOel82mR0e3CiFLa9Zx0w4y6BAY067s7uhaWK4EnmcJAS0RIEqlnJ7O4YN7n08XeOUuvnvhp7V62VhNZChRwVScuxiJyRitpHNl4sT5i2eOdDwwONz+6L6v/v2J7+hQGBtIBNdTUognnnr2C1/5WsvC96FxHYVDIBFdFMhSfuLZzxx5UpNNSO564R+j0r7rOlIqFAjosCVhA9C6tWXkm//mD77/l9975ehRz3MhMFaAkp7jOo/u++rg1nYycP7imSu33iBiY3RCdImAFTAxCAQiQovGWF2tl46f/t7YfXt6huSh/U/dnnnvg+uvKZEGNI7jeI549oUXhrb1mGUAHYBkBAclMiMidvYWokJ3s1thHZ4BMIO1EAYaGFEiWg0mBBvKHAyP9T7/+c+/9tovCYgIHVYgcNfWJw7tf8rL0uwte+zU96q1krE60qkgngFSEWkhZAERfQ6kVNdunzz+zk8/W/xCsY+ffuTrK+U7C8sTAh1HopL485dfzuW+1uc3lA2BgVmxZXCAiRfnykGgoyzRJNMReorKhp7nFNpSKIAtsw7QhkCh8RvT4/O//NlRJZVDDK4ihq7i0NOP/LNiH/plPPHOj8YnT1oibQIiG4199HAVdbgwEwMyREpSIIU8dvovhgf2PXhwZOtY8dnKt15+4w/rjZIjwfXk2VPv1Ffmfv/RemeaOQxQAZBPlCdrX33lJ1evXa9UavWGr7VprgHHUel0qpDPjm0b+Udf/iKiQuujrrMJUHJl4c5f/eQ7V25Mul7KsgWETLrl2Uf/5daxDiA4f/7666f/ItRa68DahD8wRXhUJUVLiDApkdUmlEKtlO6+dOzbncU/HRrL7t03FoTfeu3dPzOmEWnA1VotbDTADdGCNlb79fYesTxvr1y9ODk5XW/4fhBqs8EBpVKem0mnyfpaf7azI71a9o1fd9ACQNioV2sspSuFUMqmU+knH/7W3n1jyqVbV2svHfvOSumu0aE2IcUEiJoilXRkar3HIPlJzFKoUm2hVFna2nOkpYu7igNpOTi/cgnYOMqRQh4erOfcAAwh259fbNyeWXv1laPn3r9QqTWqtUbDD4IgDAOtQ2OM0cYaY6y1lVJ58e5stVK5ee7t7e5NIAtgqg08dsP1A9KW06mWjx345wcOHEjl7fwkfP9nf3zxxnGttR82iAzDenqIRADpqFSsI+HGPiFgYinU4upErVYb6n6kpYu6OvsL3thKeYJMldFrz8BosYxori9n/ubtlRPH3ro6fqMRhPVGIwhDrbXW2iZHtCqictLU5J2LZ8/NL5aG27grV0O279xpOTebsibM5wYO7/+DvffvTuft0pT8f6/+6bsf/FiH2g/qljRxMvxJ/woASKU8jHuJMG7wWhfrWaCcW7parlQ2dxxs7RQdncVi7oGGX2r4cxMr3s3l7HvT7ssX5d2VemBsEJqGH4Sh0dpYY62Na6iJlhoVwVigRCGD0H4w702uZk5Nt709mbZEPZ0HHtn/9dEdA16G5yf5R6/+2a/O/SAIQz+oGxsHT6Q2JCUEYGCpVGqdq2CTScdnxIQg5pauLq3O9hQOtHV67V3prtYDCtrKtdnx+crNBazUQz8M6o3QD7U2UaTELRobCnLrjWEEQATIqI24s+bOVUQ+0zU29LkH9n6ubygjEG5fq/7w6J+cuvhjPwgbQc3YsNm20lQGm11sUklvvduM7+HB0TQQEwIurNy8c/di3hntaOto6YSuzsH23H4BTq2xUK6t+aExhskCWUpktvVK4r3ddUoKR6AEBBSyrdC9bfCp+3d+ddv20ZYOCKt4/v3xH/78P126fjwIwkZQNyaMCxRRjeKexiEAZimle0/H3G/0gSwwrlbmb9w5GdSd9uy2lnbR1pXq69re3XYg7XZqE/phNSoEMkQFE4EoJSoplEAppJRSxbVoKbOZlr7OHXtGn39o31d27XygayAlJdy9Y19740cvHf/OnbmrYRBErSobrKdft56B0XPzzVa5JIgiMowxJow7IZTrpDw35Xne6JaDRx742q4dB9q6ACWEdVhdMjOztydnL80sXF1am6rUlhph1ZiQyAKAEFIpN+Xm8tliZ+vm/q5tm/t2DvRtaetw3AywhdUFuHj5vTfO/PX47XeCIAi0H4a+sSbGPEQUyXO/Zj0AxA5s9CECtBGhF80auJBSSEe5npOSSuazrWNDjz+464Xto/cXuz7cclaurFWrJT+oh8YHAFelUl4ml20p5FvyhXTUcoYIoQ/LC+bq+LnTF1+6cuvNSm3NGhtoX5swbmSJivhR218swADcK3iuO7Cx8TXpuGy24URtFEIIqYRylOs4nhCYy7Rs7t29Y/jI6PCD/X2bW1qllwahkhikjbJUfGJN3PQ3Ozt17dbpyzffuDN3oVovEbHWgTahIROZHpXv16s10OyTu0dw+5ADsN4qtsEHgKgdRMQtFUm7qFKOQFTKacl19nSMDHTv6Osa7SwOtBaK6UzGc92IZxJRGIb1er1UXl5cnplZGJ+ev3R36XqpumiMJmJrtbbaRg1mcWdWBMXvtZ43dg19pAPrzcZxF0KzlA/4ob4WKYQUjpIKhYj6RVzlpbx8OlVIe3nPzUYqLLENwlojqDT8sh9UQhNEUU1ExpqoNzBO8wnO4WbRdb06AXyv6b/Ngd8cTnFKFAkBFUlLqRSi2XosNvxbktGarSUR8o025Si9sE1quJQU4AiaFbmPCJsPi7sfJUozN+WUWJVGAGYLKBiQo05aoiaXaOb7pHMQmxl5Q/202fkdk5J7+vjuaWD/Hab/TgfW3cBEbuW49kbICIgcKxXRLwTrLe24UYlc7/2ObaX1OmSzOr+hjPvbY+ZDx/8HnxiKLqgyztMAAAAASUVORK5CYII=" alt="">Pump &amp; Pingo</div>
+      <div class="brand"><img src="icons/icon-192.png" alt="">Treino TH</div>
       <h1>${ci.notStarted ? 'Começa em breve' : `Semana ${ci.week} <span>de ${ci.weeks}</span>`}</h1>
       <div class="sub"><i class="sync ${S.sync}"></i>${syncTxt}</div>
     </div>
@@ -538,7 +525,7 @@ function render(){
     html += `<div class="week" role="tablist" aria-label="Dias da semana">` + weekState().map(w => {
       const c = TYPES[PLAN[w.k].type].c, rest = w.k === 'dom';
       return `<button class="wd ${w.k===S.day?'sel':''} ${w.today?'today':''} ${w.done?'done':''} ${w.part?'part':''} ${rest?'off':''}" style="--c:${c}" data-act="day" data-day="${w.k}" role="tab" aria-selected="${w.k===S.day}" aria-label="${DFULL[w.k]}${w.done?', concluído':''}"><div class="l">${DLABEL[w.k]}</div>${hasFut(dateOfDay(w.k)) ? `<i class="fb">${BALL(13)}</i>` : ''}<div class="s">${w.done?ICON.check.replace('stroke-width="3"','stroke-width="3.5" width="12" height="12"'):''}</div></button>`;
-    }).join('') + `</div>` + viewTreino();
+    }).join('') + `</div>` + installCard() + viewTreino();
   }
   if(S.tab === 'progresso') html += viewProgresso(ci);
   if(S.tab === 'joelho') html += viewJoelho();
@@ -777,10 +764,14 @@ function renderSheet(){
     <div class="field"><label for="prior">Treinos feitos antes de usar o app</label><input type="number" inputmode="numeric" min="0" id="prior" data-k="prior" value="${P.prior || 0}" style="width:100%;height:48px;border-radius:14px;border:1px solid var(--stroke2);background:rgba(0,0,0,.3);padding:0 14px"></div>
     <div class="row" style="margin-bottom:10px"><button class="btn ghost" data-act="newcycle">Começar novo ciclo hoje</button></div>
     <h4>No celular</h4>
-    <div class="optrow"><p>Avisos do descanso<small>${notifState()}</small></p>${('Notification' in window) && Notification.permission !== 'granted' && Notification.permission !== 'denied' ? '<button class="btn sm" data-act="notif">Ativar</button>' : ''}</div>
+    ${installRow()}
+    <div class="optrow"><p>Aviso do fim do descanso<small>${notifState()}</small></p>${notifOk() ? '<button class="btn sm ghost" data-act="testrest">Testar (5 s)</button>' : ('Notification' in window) && Notification.permission !== 'denied' ? '<button class="btn sm" data-act="notif">Ativar</button>' : ''}</div>
+    <div class="optrow"><p>Som do alarme<small>Usa o volume de mídia do celular. Deixe alto no treino.</small></p><button class="btn sm ghost" data-act="testsound">Testar som</button></div>
     <div class="optrow"><p>Manter tela ligada no treino<small>Evita que o celular bloqueie e pause o timer</small></p><button class="btn sm ${P.wake === false ? 'ghost' : ''}" data-act="wake" aria-pressed="${P.wake !== false}">${P.wake === false ? 'Desligado' : 'Ligado'}</button></div>
-    ${PWA ? `<h4>Lembrete de treino</h4>
-    <div class="optrow"><p>Push às 6h e às 19h<small>${S.pushCode ? 'Ativado neste celular. Copie o código e coloque no GitHub (passo 5 do guia).' : 'Seg a sex. Às 19h, se o treino já foi feito, vira lembrete do check-in do joelho.'}</small></p><button class="btn sm ${S.pushCode ? 'ghost' : ''}" data-act="${S.pushCode ? 'copypush' : 'push'}">${S.pushCode ? 'Copiar código' : 'Ativar'}</button></div>` : ''}
+    ${PWA ? `<h4>Lembretes de treino</h4>
+    <div class="optrow"><p>Manhã<small>Primeiro lembrete do dia</small></p><input type="time" data-k="ram" value="${remind().am}" aria-label="Horário do lembrete da manhã"></div>
+    <div class="optrow"><p>Noite<small>Se o treino já foi feito, vira o check-in do joelho</small></p><input type="time" data-k="rpm" value="${remind().pm}" aria-label="Horário do lembrete da noite"></div>
+    <div class="optrow"><p>Receber neste celular<small>${S.pushCode ? 'Celular inscrito. Os lembretes começam quando o servidor de push estiver ligado.' : 'Inscreve este celular para receber os lembretes.'}</small></p><button class="btn sm ${S.pushCode ? 'ghost' : ''}" data-act="${S.pushCode ? 'copypush' : 'push'}">${S.pushCode ? 'Copiar código' : 'Ativar'}</button></div>` : ''}
     <h4>Backup dos dados</h4>
     <div class="optrow"><p>Copiar backup<small>Leva seu histórico pra outro aparelho ou versão do app</small></p><button class="btn sm ghost" data-act="export">Copiar</button></div>
     <textarea class="bk" id="bk" placeholder="Cole aqui um backup para importar" aria-label="Backup"></textarea>
@@ -789,41 +780,94 @@ function renderSheet(){
 }
 
 /* ---------- timer ---------- */
-const TM = { end:0, total:0, int:null };
-let actx = null;
-function unlockAudio(){ try{ actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if(actx.state === 'suspended') actx.resume(); }catch(e){} }
-function beep(){
-  try{ if(!actx) return; [0, .22, .44].forEach(t => { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(.0001, actx.currentTime+t); g.gain.exponentialRampToValueAtTime(.25, actx.currentTime+t+.02); g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime+t+.18); o.start(actx.currentTime+t); o.stop(actx.currentTime+t+.2); }); }catch(e){}
-  try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
-}
-function notifState(){
-  if(!('Notification' in window)) return 'Não suportado neste navegador';
-  if(Notification.permission === 'granted') return 'Ativados';
-  if(Notification.permission === 'denied') return 'Bloqueados nas configurações do navegador';
-  return 'Toca quando o descanso acabar, mesmo fora do app';
-}
-async function notify(title, body){
+const TM = { end:0, total:0, int:null, next:'', lastSec:-1 };
+let actx = null, amaster = null;
+// cadeia de áudio: tudo passa por ganho alto + compressor (soa bem mais alto sem estourar)
+function unlockAudio(){
   try{
-    if(!('Notification' in window) || Notification.permission !== 'granted') return;
-    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
-    const opt = { body, icon:'icons/icon-192.png', badge:'icons/icon-192.png', tag:'descanso', renotify:true, vibrate:[300,120,300] };
-    if(reg) reg.showNotification(title, opt); else new Notification(title, opt);
+    if(!actx){
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      const comp = actx.createDynamicsCompressor();
+      comp.threshold.value = -12; comp.knee.value = 0; comp.ratio.value = 20; comp.attack.value = .001; comp.release.value = .08;
+      amaster = actx.createGain(); amaster.gain.value = 2.2;
+      amaster.connect(comp); comp.connect(actx.destination);
+    }
+    if(actx.state === 'suspended') actx.resume();
   }catch(e){}
 }
-const PWA = ('serviceWorker' in navigator) && !window.claude && location.protocol === 'https:';
+function tone(f, t, dur, vol = 1, type = 'square'){
+  const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + t;
+  o.type = type; o.frequency.value = f; o.connect(g); g.connect(amaster);
+  g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + .01);
+  g.gain.setValueAtTime(vol, t0 + dur - .03); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  o.start(t0); o.stop(t0 + dur + .02);
+}
+// bipe curto da contagem 3, 2, 1
+function countBeep(){ try{ if(actx){ unlockAudio(); tone(1046, 0, .12, .7); } }catch(e){} try{ navigator.vibrate && navigator.vibrate(90); }catch(e){} }
+// alarme do fim do descanso: 3 pares de bipes agudos
+function beep(){
+  try{ if(actx){ unlockAudio(); for(let i = 0; i < 3; i++){ tone(1318, i*.45, .16, 1); tone(1760, i*.45 + .18, .2, 1); } } }catch(e){}
+  try{ navigator.vibrate && navigator.vibrate([400,120,400,120,700]); }catch(e){}
+}
+const PWA = ('serviceWorker' in navigator) && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+const notifOk = () => PWA && ('Notification' in window) && Notification.permission === 'granted';
+function notifState(){
+  if(!('Notification' in window)) return 'Não suportado neste navegador';
+  if(Notification.permission === 'granted') return 'Ativado. Toca mesmo com a tela bloqueada.';
+  if(Notification.permission === 'denied') return 'Bloqueado. Libere em Configurações → Apps → Treino TH → Notificações.';
+  return 'Notifica quando o descanso acabar, mesmo com a tela bloqueada';
+}
+// o aviso com tela bloqueada é mostrado pelo service worker (sw.js), que segura o horário mesmo se a página congelar
+async function swPost(msg){
+  try{
+    if(!PWA) return false;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sw = reg && (reg.active || reg.waiting || reg.installing);
+    if(sw){ sw.postMessage(msg); return true; }
+  }catch(e){}
+  return false;
+}
+function scheduleRest(){ if(notifOk()) swPost({ type:'rest', end:TM.end, next:TM.next }); }
+function cancelRest(){ swPost({ type:'rest-cancel' }); }
+function askNotifOnce(){
+  try{
+    if(!PWA || !('Notification' in window) || Notification.permission !== 'default' || localStorage.getItem('treino-notif-asked')) return;
+    localStorage.setItem('treino-notif-asked', '1');
+    Notification.requestPermission().then(p => { if(p === 'granted'){ toast('Aviso do descanso ativado'); scheduleRest(); } });
+  }catch(e){}
+}
+const remind = () => Object.assign({ am:'06:00', pm:'21:00' }, S.program.remind || {});
 const VAPID = 'BE5B0Ayjsno89XmRhys7_bUgZcSjtb_AasPslLLp7Cjj-YlcSKsTDv03IlL5WrIKqlOns_mmAQC013x5cdXITJg';
 function b64u(str){ const p = '='.repeat((4 - str.length % 4) % 4), b = atob((str + p).replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(b, c => c.charCodeAt(0)); }
 async function subscribePush(){
   try{
     if(Notification.permission !== 'granted' && await Notification.requestPermission() !== 'granted'){ toast('Permita notificações pra receber o lembrete'); return; }
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, r) => setTimeout(() => r(new Error('sw')), 8000))]);
     const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64u(VAPID) });
     S.pushCode = JSON.stringify(sub); localStorage.setItem('treino-push', S.pushCode);
-    renderSheet(); copyText(S.pushCode, 'Código copiado. Cole no secret PUSH_SUB do GitHub.');
-  }catch(e){ toast('Não foi possível ativar. Instale o app na tela inicial e tente de novo.'); }
+    renderSheet(); toast('Celular inscrito nos lembretes');
+  }catch(e){ toast('Não foi possível ativar. Abra pelo app instalado e tente de novo.'); }
 }
 function copyText(t, msg){ const ok = () => toast(msg); if(navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => toast('Não deu pra copiar automaticamente')); }
 async function markTrained(){ try{ const c = await caches.open('treino-state'); await c.put('/last-session', new Response(ymd())); }catch(e){} }
+
+/* ---------- instalação ---------- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if(S.program) render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; toast('Treino TH instalado'); render(); });
+function installRow(){
+  if(isStandalone()) return '';
+  if(installEvt) return `<div class="optrow"><p>Instalar o app<small>Abre em tela cheia, como app, e libera os avisos</small></p><button class="btn sm" data-act="install">Instalar</button></div>`;
+  if(isIOS()) return `<div class="optrow"><p>Instalar no iPhone<small>Toque em Compartilhar → Adicionar à Tela de Início</small></p></div>`;
+  return '';
+}
+function installCard(){
+  if(isStandalone() || S.program.hideInstall || !(installEvt || isIOS())) return '';
+  return `<section class="install glass"><div class="tx"><b>Instale o Treino TH</b>${installEvt ? 'Fica na tela inicial e avisa o fim do descanso com a tela bloqueada.' : 'No iPhone: Compartilhar → Adicionar à Tela de Início.'}</div>${installEvt ? '<button class="btn sm" data-act="install">Instalar</button>' : ''}<button class="tbtn" data-act="hideinstall" aria-label="Dispensar">✕</button></section>`;
+}
+
 let WL = null;
 async function wakeOn(){
   try{ if(S.program.wake === false || !('wakeLock' in navigator) || WL || document.hidden) return; WL = await navigator.wakeLock.request('screen'); WL.addEventListener('release', () => { WL = null; }); }catch(e){}
@@ -834,19 +878,22 @@ document.addEventListener('visibilitychange', () => {
   if(TM.int) tick();
   const d = S.drafts[S.day]; if(d && d.date === ymd() && Object.values(d.log || {}).some(a => a.some(x => x.done))) wakeOn();
 });
-function startTimer(sec){ if(!sec) return; TM.total = sec; TM.end = Date.now() + sec*1000; clearInterval(TM.int); TM.int = setInterval(tick, 250); tick(); }
-function stopTimer(){ clearInterval(TM.int); TM.int = null; const el = document.getElementById('timer'); el.classList.remove('on','end'); }
+function startTimer(sec, next = ''){ if(!sec) return; TM.total = sec; TM.end = Date.now() + sec*1000; TM.next = next; TM.lastSec = -1; clearInterval(TM.int); TM.int = setInterval(tick, 200); tick(); scheduleRest(); }
+function stopTimer(){ clearInterval(TM.int); TM.int = null; const el = document.getElementById('timer'); el.classList.remove('on','end','warn'); cancelRest(); }
 function tick(){
   const el = document.getElementById('timer');
   const left = Math.max(0, Math.ceil((TM.end - Date.now())/1000));
   el.classList.add('on');
   document.getElementById('tclock').textContent = Math.floor(left/60) + ':' + z(left%60);
   document.getElementById('ringfg').setAttribute('stroke-dashoffset', (119.4 * (1 - left / TM.total)).toFixed(1));
+  el.classList.toggle('warn', left > 0 && left <= 10);
+  if(left > 0 && left <= 3 && left !== TM.lastSec && !document.hidden) countBeep();
+  TM.lastSec = left;
   if(left <= 0){
     clearInterval(TM.int); TM.int = null;
     el.classList.add('end'); document.getElementById('tlabel').textContent = 'Próxima série';
-    beep(); if(document.hidden) notify('Descanso acabou', 'Bora pra próxima série 💪'); setTimeout(() => { if(!TM.int) stopTimer(); }, 4000);
-  } else { el.classList.remove('end'); document.getElementById('tlabel').textContent = 'Descanso'; }
+    beep(); setTimeout(() => { if(!TM.int){ el.classList.remove('on','end','warn'); } }, 4000);
+  } else { el.classList.remove('end'); document.getElementById('tlabel').textContent = left <= 10 ? 'Prepare-se' : 'Descanso'; }
 }
 
 function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('on'), 2400); }
@@ -863,7 +910,7 @@ document.addEventListener('click', e => {
     const plan = PLAN[S.day], ex = plan.ex.find(x => x.id === b.dataset.ex);
     const d = draft(S.day), sets = exSets(d, ex);
     if(act === 'undoset'){ const k = sets.map(x => x.done).lastIndexOf(true); if(k >= 0) sets[k].done = false; stopTimer(); saveDrafts(); render(); return; }
-    wakeOn();
+    wakeOn(); askNotifOnce();
     const i = sets.findIndex(x => !x.done); if(i < 0) return;
     const s = sets[i];
     s.done = true;
@@ -877,8 +924,8 @@ document.addEventListener('click', e => {
       if(exDone(d, ex)){
         const next = plan.ex.find(x => !exDone(d, x));
         S.open[S.day] = next ? next.id : null;
-        if(ex.rest && next) startTimer(ex.rest);
-      } else startTimer(ex.rest);
+        if(ex.rest && next) startTimer(ex.rest, next.name);
+      } else startTimer(ex.rest, ex.name + ' · série ' + (i+2));
     }
     saveDrafts(); render();
   }
@@ -903,13 +950,17 @@ document.addEventListener('click', e => {
   else if(act === 'futtoggle'){ const f = S.program.fut = S.program.fut || [], k = b.dataset.date, i = f.indexOf(k); if(i >= 0) f.splice(i, 1); else f.push(k); saveProgram(); render(); toast(i >= 0 ? 'Futevôlei removido' : 'Futevôlei registrado 🏐'); }
   else if(act === 'calfut'){ const f = S.program.fut = S.program.fut || [], k = b.dataset.date, i = f.indexOf(k); if(i >= 0) f.splice(i, 1); else f.push(k); saveProgram(); render(); toast(i >= 0 ? 'Futevôlei removido' : 'Futevôlei registrado'); }
   else if(act === 'calmark'){ const k = b.dataset.date, t = parseYmd(k).setHours(19,0,0,0); const sess = { id:uid('s'), day:b.dataset.day, date:k, startedAt:null, finishedAt:t, log:{}, sets:0, volume:0, pain:null, manual:true }; S.sessions.push(sess); saveSession(sess); render(); toast('Check-in registrado'); }
-  else if(act === 'calunmark'){ const k = b.dataset.date; S.sessions.filter(s => s.manual && s.date === k).forEach(s => { if(DB) safe(() => DB.doc(BASE + '/logs/sessions/' + s.id).delete()); }); S.sessions = S.sessions.filter(s => !(s.manual && s.date === k)); lsSave(); render(); toast('Registro removido'); }
+  else if(act === 'calunmark'){ const k = b.dataset.date; S.sessions = S.sessions.filter(s => !(s.manual && s.date === k)); lsSave(); render(); toast('Registro removido'); }
   else if(act === 'ctx'){ S.painCtx = b.dataset.ctx; render(); }
   else if(act === 'savepain'){ const p = { id:uid('p'), date:ymd(), ts:Date.now(), value:S.painDraft, ctx:S.painCtx }; S.pain.push(p); savePain(p); render(); toast('Registro salvo'); }
   else if(act === 'settings'){ renderSheet(); document.getElementById('sheet').classList.add('on'); }
   else if(act === 'push'){ subscribePush(); }
   else if(act === 'copypush'){ copyText(S.pushCode, 'Código copiado. Cole no secret PUSH_SUB do GitHub.'); }
-  else if(act === 'notif'){ if('Notification' in window) Notification.requestPermission().then(() => { renderSheet(); if(Notification.permission === 'granted') toast('Avisos ativados'); }); }
+  else if(act === 'notif'){ if('Notification' in window) Notification.requestPermission().then(() => { renderSheet(); if(Notification.permission === 'granted') toast('Aviso do descanso ativado'); }); }
+  else if(act === 'testrest'){ swPost({ type:'rest', end:Date.now() + 5000, next:'teste do aviso', force:true }).then(ok => toast(ok ? 'Bloqueie a tela: o aviso chega em 5 s' : 'Service worker ainda não está ativo. Recarregue o app.')); }
+  else if(act === 'testsound'){ unlockAudio(); beep(); }
+  else if(act === 'install'){ if(installEvt){ installEvt.prompt(); installEvt.userChoice.finally(() => { installEvt = null; render(); renderSheet(); }); } }
+  else if(act === 'hideinstall'){ S.program.hideInstall = true; saveProgram(); render(); }
   else if(act === 'wake'){ S.program.wake = S.program.wake === false; saveProgram(); if(S.program.wake === false) wakeOff(); renderSheet(); }
   else if(act === 'export'){
     const txt = JSON.stringify({app:'treino-hibrido', v:1, program:S.program, sessions:S.sessions, pain:S.pain});
@@ -924,14 +975,13 @@ document.addEventListener('click', e => {
     const mp = new Map(S.pain.map(x => [x.id, x])); (B.pain || []).forEach(x => mp.set(x.id, x)); S.pain = [...mp.values()];
     if(B.program) S.program = Object.assign({}, B.program, {seed31:true});
     saveProgram();
-    if(DB){ (B.sessions || []).forEach(x => safe(() => DB.doc(BASE + '/logs/sessions/' + x.id).set(x))); (B.pain || []).forEach(x => safe(() => DB.doc(BASE + '/logs/pain/' + x.id).set(x))); }
     lsSave(); renderSheet(); render(); toast((B.sessions || []).length + ' treinos importados');
   }
   else if(act === 'closesheet'){ document.getElementById('sheet').classList.remove('on'); render(); }
   else if(act === 'weeks'){ S.program.weeks = +b.dataset.w; saveProgram(); renderSheet(); render(); }
   else if(act === 'newcycle'){ S.program.start = ymd(); S.program.prior = 0; saveProgram(); renderSheet(); render(); toast('Novo ciclo iniciado'); }
-  else if(act === 't-15'){ TM.end -= 15000; if(TM.end < Date.now()) TM.end = Date.now(); tick(); }
-  else if(act === 't+15'){ if(!TM.int){ TM.end = Date.now(); TM.int = setInterval(tick, 250); } TM.end += 15000; TM.total = Math.max(TM.total, Math.ceil((TM.end-Date.now())/1000)); tick(); }
+  else if(act === 't-15'){ TM.end -= 15000; if(TM.end < Date.now()) TM.end = Date.now(); tick(); scheduleRest(); }
+  else if(act === 't+15'){ if(!TM.int){ TM.end = Date.now(); TM.int = setInterval(tick, 250); } TM.end += 15000; TM.total = Math.max(TM.total, Math.ceil((TM.end-Date.now())/1000)); tick(); scheduleRest(); }
   else if(act === 'tskip'){ stopTimer(); }
 });
 document.getElementById('sheet').addEventListener('click', e => { if(e.target.id === 'sheet'){ e.currentTarget.classList.remove('on'); render(); } });
@@ -948,6 +998,7 @@ document.addEventListener('change', e => {
   if(k === 'start' && t.value){ S.program.start = t.value; saveProgram(); render(); }
   if(k === 'prior'){ S.program.prior = Math.max(0, parseInt(t.value, 10) || 0); saveProgram(); render(); }
   if(k === 'pain') render();
+  if((k === 'ram' || k === 'rpm') && t.value){ S.program.remind = Object.assign(remind(), { [k === 'ram' ? 'am' : 'pm']: t.value }); saveProgram(); toast('Horário salvo'); }
 });
 
 /* ---------- início ---------- */
@@ -960,8 +1011,8 @@ document.addEventListener('change', e => {
   Object.keys(S.drafts).forEach(k => { if(!S.drafts[k] || S.drafts[k].date !== ymd()) delete S.drafts[k]; });
   const h = location.hash.slice(1); if(['treino','progresso','joelho','guia'].includes(h)) S.tab = h;
   render();
-  initDb();
-  if(PWA) navigator.serviceWorker.register('sw.js').catch(() => {});
+  persistStorage();
+  if(PWA) navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
 })();
 </script>
 </body>
