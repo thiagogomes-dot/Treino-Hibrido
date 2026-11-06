@@ -140,6 +140,16 @@ notificação local **só se a página estiver oculta e o JS ainda rodando**. Wa
 - `lembrete.mjs`: sujeito VAPID passou a ser a URL do site.
 - Teste local: `.claude/launch.json` de `K:\CLAUDE` tem a config `treino-th` (http-server na porta 8790).
 
+## Mudanças publicadas depois (2026-11-05)
+
+- Lembretes testados no celular do Thiago: funcionando.
+- Contagem do descanso na tela de bloqueio (substitui o widget, que o Chrome Android não permite para PWA):
+  notificação silenciosa "Descanso · 0:45" com barra ▰▱ e próximo exercício, atualiza a cada 5 s (1 s nos últimos
+  10), botões +15 s e Pular (sincronizam o timer do app por `postMessage` `rest-sync`/`rest-skip`), vira alarme no zero.
+- Tela de abertura (`#intro`): avatar, "Treino TH", "PPL 5x + futevôlei 2x, com o joelho protegido.", semana do
+  ciclo e treino do dia; some em 1,7 s ou no toque; pulada quando o app abre com hash (notificação).
+- Próximos: Spotify (Thiago tem Premium; Web API + PKCE, sem servidor), depois iPhone.
+
 ## Em aberto
 
 - Onde hospedar o servidor de push (Cloudflare Worker com Cron + KV é gratuito e serve para descanso e lembretes;
