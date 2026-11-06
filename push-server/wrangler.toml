@@ -16,3 +16,7 @@ VAPID_PUBLIC = "BNZaASVC1qqscvLwT2pBtH8cNoaVsdG2TypnZvv0ouv_FaBLsPbbY9OP4ATlRK99
 [[kv_namespaces]]
 binding = "SUBS"
 id = "983758b519e9464e8ed95fdc0b1a19bb"
+
+# IA grátis do Cloudflare (Workers AI) para responder os comentários na hora
+[ai]
+binding = "AI"
