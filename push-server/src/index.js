@@ -40,22 +40,29 @@ function localNow(tz){
 const toMins = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
 
 // resposta curta e imediata da IA grátis do Cloudflare
-const AI_SYSTEM = `Você é a treinadora virtual do app "Treino da Kika". A Erika (Kika) treina musculação 4x por semana (inferior/superior),
+const AI_COMMON = `Responda em português do Brasil, com objetividade e um tom próximo, em no máximo 4 frases curtas:
+reconheça a avaliação (nota de 1 a 5 estrelas), responda as dúvidas de forma prática (técnica, amplitude, carga, cansaço, alternativa segura)
+e dê uma dica para o próximo treino. Se houver dor aguda, forte ou que piora, oriente parar e procurar fisio/ortopedista.
+Não invente diagnóstico. Não use listas nem markdown. À noite o Claude revisa com mais calma e pode sugerir mudar o treino; diga isso se fizer sentido.`;
+const AI_SYSTEM = {
+  kika: `Você é a treinadora virtual do app "Treino da Kika". A Erika (Kika) treina musculação 4x por semana (inferior/superior),
 com condromalácia patelar nos dois joelhos e hérnia de disco L5-S1. Regras do treino dela: nenhum exercício de perna passa de 90° de flexão do joelho,
 coluna sempre neutra, miniband (elástico) nos exercícios de perna, progressão de carga só com técnica perfeita, dor aguda = parar.
-Ela acabou de avaliar o treino do dia com uma nota de 1 a 5 estrelas e pode ter deixado comentários ou dúvidas.
-Responda em português do Brasil, com carinho e objetividade, em no máximo 4 frases curtas: reconheça a avaliação,
-responda as dúvidas dela de forma prática (técnica, amplitude, carga, cansaço, alternativa segura) e dê uma dica para o próximo treino. Se houver dor aguda, forte ou que piora, oriente parar e falar com o fisio/ortopedista.
-Não invente diagnóstico. Não use listas nem markdown. À noite o Claude revisa com mais calma e pode sugerir mudar o treino; você pode dizer isso se fizer sentido.`;
+Ela acabou de avaliar o treino do dia e pode ter deixado comentários ou dúvidas.\n` + AI_COMMON,
+  th: `Você é o treinador virtual do app "Treino TH". O Thiago faz musculação PPL 5x por semana (push, pull, legs) e futevôlei 2x por semana,
+com tendinopatia patelar nos dois joelhos e foco em estética. Regras do treino dele: musculação sempre antes do futevôlei (4 a 6 h de intervalo),
+extensão excêntrica declinada é inegociável (descida de 4 a 5 s), sobrecarga progressiva a cada 2 semanas, semana ruim = alivia o Legs mas mantém o excêntrico,
+proteína de 1,8 a 2 g/kg, sono de 7 a 8 h. Ele acabou de avaliar o treino do dia e pode ter deixado comentários ou dúvidas.\n` + AI_COMMON
+};
 async function aiReply(env, n){
   if(!env.AI) return null;
   const c = n.ctx || {};
   const user = `Treino avaliado: ${n.exName}. Nota: ${n.rating ? n.rating + ' de 5 estrelas' : 'sem nota'}.
 Exercícios do treino: ${c.series || '-'}. Feito hoje: ${c.load || '-'}.
-Fase do ciclo: ${c.phase || '-'}. Última dor registrada (0 a 10): ${c.pain ?? '-'}.
+${c.phase ? 'Fase do ciclo: ' + c.phase + '. ' : ''}Última dor registrada (0 a 10): ${c.pain ?? '-'}.
 Comentários e dúvidas dela: "${n.text || '(sem comentário)'}"`;
   try{
-    const r = await env.AI.run(AI_MODEL, { messages:[{ role:'system', content:AI_SYSTEM }, { role:'user', content:user }], max_tokens:260, temperature:.4 });
+    const r = await env.AI.run(AI_MODEL, { messages:[{ role:'system', content:AI_SYSTEM[n.app] || AI_SYSTEM.kika }, { role:'user', content:user }], max_tokens:260, temperature:.4 });
     return clip(r && (r.response || r.result || ''), 900).trim() || null;
   }catch(_){ return null; }
 }
@@ -140,14 +147,14 @@ export default {
       const list = await loadNotes(env, b.uid), today = new Date().toISOString().slice(0, 10);
       if(list.filter(x => x.date === today).length >= 25) return json(req, { error:'limite de comentários do dia' }, 429);
       const n = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts:Date.now(), date:clip(b.date, 10) || today,
-        ex:clip(b.ex, 60), exName:clip(b.exName, 120), text, rating, tags:(b.tags || []).slice(0, 8).map(t => clip(t, 30)),
+        app: b.app === 'th' ? 'th' : 'kika', ex:clip(b.ex, 60), exName:clip(b.exName, 120), text, rating, tags:(b.tags || []).slice(0, 8).map(t => clip(t, 30)),
         ctx:{ series:clip(b.ctx && b.ctx.series, 600), obs:clip(b.ctx && b.ctx.obs, 300), load:clip(b.ctx && b.ctx.load, 300), phase:clip(b.ctx && b.ctx.phase, 40), pain: b.ctx && Number.isFinite(b.ctx.pain) ? b.ctx.pain : null, day:clip(b.ctx && b.ctx.day, 40) },
         ai:null, claude:null, change:null };
       const ai = await aiReply(env, n);
       if(ai) n.ai = { text:ai, ts:Date.now() };
       list.push(n); await saveNotes(env, b.uid, list);
       const index = (await env.SUBS.get('notes-index', 'json')) || [];
-      if(!index.some(x => x.uid === b.uid)){ index.push({ uid:b.uid, app:clip(b.app, 20) || 'kika', since:Date.now() }); await env.SUBS.put('notes-index', JSON.stringify(index)); }
+      if(!index.some(x => x.uid === b.uid)){ index.push({ uid:b.uid, app:n.app, since:Date.now() }); await env.SUBS.put('notes-index', JSON.stringify(index)); }
       return json(req, { ok:true, note:n });
     }
     if(url.pathname === '/notes'){

@@ -301,6 +301,36 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 .futcard .tx span{ font-size:12.5px; color:var(--muted); }
 .futcard .btn{ width:auto; flex-shrink:0; }
 .leg-ball{ display:inline-flex; vertical-align:middle; margin-right:6px; }
+/* avaliação do treino */
+.cal-ex{ list-style:none; margin:6px 0 2px; padding:0; font-size:12.5px; }
+.cal-ex li{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; color:var(--muted); }
+.cal-ex li span:first-child{ color:var(--text); }
+.rv-in{ margin-top:12px; padding-top:12px; border-top:1px solid var(--stroke); }
+.rv-t{ display:block; font-family:var(--display); font-size:15px; margin-bottom:4px; }
+.stars{ display:flex; align-items:center; gap:4px; margin:4px 0 10px; }
+.stars button{ font-size:32px; line-height:1; background:none; border:0; padding:2px; color:rgba(255,255,255,.18); transition:transform .15s,color .15s; }
+.stars button.on{ color:#ffcf5c; text-shadow:0 0 14px rgba(255,207,92,.55); }
+.stars button:active{ transform:scale(1.2); }
+.stars .lbl{ margin-left:8px; font-size:13px; font-weight:700; color:var(--muted); }
+.rv-wrap{ position:relative; }
+.rv-ta{ width:100%; min-height:90px; border-radius:14px; border:1px solid var(--stroke2); background:rgba(0,0,0,.28); padding:10px 58px 10px 12px; font:inherit; font-size:14px; color:var(--text); resize:vertical; margin:0 0 10px; }
+.rv-ta:focus{ outline:none; border-color:var(--acc); }
+.mic{ position:absolute; right:8px; bottom:18px; width:44px; height:44px; border-radius:50%; border:0; background:var(--acc); color:#0b0a12; display:grid; place-items:center; box-shadow:0 8px 18px -8px var(--acc); }
+.mic svg{ width:22px; height:22px; }
+.mic.on{ background:#ff3b5c; color:#fff; animation:micPulse 1.2s ease-out infinite; }
+@keyframes micPulse{ from{ box-shadow:0 0 0 0 rgba(255,59,92,.6); } to{ box-shadow:0 0 0 14px rgba(255,59,92,0); } }
+.mic-st{ font-size:12px; color:var(--muted); margin:-4px 0 10px; }
+.cm-item{ padding:11px 12px; border-radius:14px; background:rgba(255,255,255,.04); border:1px solid var(--stroke); margin-bottom:8px; font-size:13px; line-height:1.45; }
+.cm-item .me b{ font-weight:700; }
+.cm-item .st{ color:#ffcf5c; letter-spacing:1px; } .cm-item .st span{ color:rgba(255,255,255,.18); }
+.cm-item .tg{ color:var(--muted); font-size:12px; }
+.cm-item .rp{ margin-top:8px; color:var(--muted); }
+.cm-item .rp b{ color:var(--text); }
+.cm-item .rp i{ font-style:normal; }
+.cm-chg{ margin-top:10px; padding:10px 12px; border-radius:12px; background:color-mix(in srgb,var(--acc) 13%,transparent); border:1px solid color-mix(in srgb,var(--acc) 35%,transparent); color:var(--text); }
+.cm-chg .row{ display:flex; gap:8px; margin-top:8px; }
+.cm-chg .btn{ flex:1; }
+.cm-new{ border-left:4px solid var(--acc); }
 /* mini player do Spotify */
 .sp{ display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:12px; border-radius:22px; }
 .sp .cv{ width:48px; height:48px; border-radius:12px; flex-shrink:0; background:rgba(255,255,255,.06) center/cover; display:grid; place-items:center; }
@@ -431,6 +461,7 @@ const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(
 
 const BALL = (sz=14) => `<svg class="ballsvg" width="${sz}" height="${sz}" viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11" fill="#ffb86b"/>${[0,120,240].map(a => `<path d="M0 0L${(11*Math.cos((a-30)*Math.PI/180)).toFixed(2)} ${(11*Math.sin((a-30)*Math.PI/180)).toFixed(2)}A11 11 0 0 1 ${(11*Math.cos((a+30)*Math.PI/180)).toFixed(2)} ${(11*Math.sin((a+30)*Math.PI/180)).toFixed(2)}Z" fill="#a98bff"/>`).join('')}<circle r="3.2" fill="#ffb86b"/><circle r="11" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/></svg>`;
 const ICON = {
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   dumb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>',
@@ -555,7 +586,7 @@ function render(){
     html += `<div class="week" role="tablist" aria-label="Dias da semana">` + weekState().map(w => {
       const c = TYPES[PLAN[w.k].type].c, rest = w.k === 'dom';
       return `<button class="wd ${w.k===S.day?'sel':''} ${w.today?'today':''} ${w.done?'done':''} ${w.part?'part':''} ${rest?'off':''}" style="--c:${c}" data-act="day" data-day="${w.k}" role="tab" aria-selected="${w.k===S.day}" aria-label="${DFULL[w.k]}${w.done?', concluído':''}"><div class="l">${DLABEL[w.k]}</div>${hasFut(dateOfDay(w.k)) ? `<i class="fb">${BALL(13)}</i>` : ''}<div class="s">${w.done?ICON.check.replace('stroke-width="3"','stroke-width="3.5" width="12" height="12"'):''}</div></button>`;
-    }).join('') + `</div>` + installCard() + spCard() + viewTreino();
+    }).join('') + `</div>` + installCard() + cmCard() + spCard() + viewTreino();
   }
   if(S.tab === 'progresso') html += viewProgresso(ci);
   if(S.tab === 'joelho') html += viewJoelho();
@@ -589,7 +620,7 @@ function viewTreino(){
     <section class="donecard glass"><div class="big">${ICON.check}</div><h2>Treino concluído</h2><p class="hint" style="color:var(--muted);margin:0">${DFULL[day]}, ${fmtDate(done.date)}</p>
       <div class="stats"><div class="stat"><b>${done.sets}</b><span>séries</span></div><div class="stat"><b>${fmtNum(done.volume)}</b><span>kg de volume</span></div><div class="stat"><b>${mins ? mins + 'min' : '—'}</b><span>duração</span></div></div>
       ${plan.futev ? `<button class="btn" data-act="tab" data-tab="joelho" style="margin-bottom:8px">Registrar dor pós-futevôlei</button>` : ''}
-      <button class="btn ghost" data-act="redo">Registrar outro treino hoje</button></section>${futCard(day)}`;
+      <button class="btn ghost" data-act="redo">Registrar outro treino hoje</button></section>${rvCard()}${futCard(day)}`;
   }
   const d = draft(day);
   const total = plan.ex.length, doneCount = plan.ex.filter(e => exDone(d, e)).length;
@@ -627,7 +658,7 @@ function viewTreino(){
   h += `<section class="card glass" style="margin-top:14px"><h3>Joelho hoje</h3><p class="hint">Opcional. Ajuda a acompanhar o tendão ao longo do ciclo.</p>
     <div class="pain-val" style="--pc:${pv==null?'var(--dim)':painColor(pv)}"><b>${pv==null?'–':pv}</b><span>${pv==null?'Arraste para registrar':'de 10'}</span></div>
     <input type="range" min="0" max="10" step="1" value="${pv==null?0:pv}" data-k="pain" aria-label="Dor no joelho de 0 a 10"><div class="scale"><span>Sem dor</span><span>Dor forte</span></div></section>
-    <button class="btn" data-act="finish" ${anyDone?'':'disabled'}>${doneCount === total ? 'Concluir treino' : anyDone ? `Concluir com ${doneCount} de ${total} exercícios` : 'Marque uma série para concluir'}</button>`;
+    <button class="btn" data-act="finish" ${anyDone?'':'disabled'}>${doneCount === total ? 'Concluir treino' : anyDone ? `Concluir com ${doneCount} de ${total} exercícios` : 'Marque uma série para concluir'}</button>` + (anyDone ? rvCard() : '');
   return h;
 }
 
@@ -688,6 +719,8 @@ function viewCalendar(){
     ss.forEach(s => { const mins = s.startedAt ? Math.max(1, Math.round((s.finishedAt - s.startedAt)/60000)) + ' min' : 'registro manual';
       h += `<div class="row"><span><span class="dot" style="--c:${TYPES[PLAN[s.day].type].c}"></span>${esc(PLAN[s.day].title)}</span><span>${s.sets ? s.sets + ' séries · ' : ''}${mins}</span></div>`; });
     if(f) h += `<div class="row"><span><span class="dot" style="--c:${TYPES.cardio.c}"></span>Futevôlei</span><span></span></div>`;
+    ss.forEach(s => { const ids = Object.keys(s.log || {}); if(ids.length) h += `<ul class="cal-ex">${ids.map(id => { const v = s.log[id], ex = ALLEX[id] || { name:id }; const w = Math.max(0, ...v.map(x => +x.w || 0)); return `<li><span>${esc(ex.name)}</span><span>${v.length} ${v.length === 1 ? 'série' : 'séries'}${w ? ' · ' + fmtNum(w) + ' kg' : ''}</span></li>`; }).join('')}</ul>`; });
+    if(ss.length && key <= today) h += rvCard(ss[ss.length - 1].day, key, true);
     if(!ss.length && !f) h += `<div class="row"><span>Nenhum check-in neste dia.</span></div>`;
     if(key <= today){
       h += `<div class="acts">`;
@@ -902,7 +935,7 @@ async function syncPush(sub){
   sub = sub || await (await pushReg()).pushManager.getSubscription();
   if(!sub) return false;
   const r = remind();
-  await api('/subscribe', { sub:sub.toJSON(), am:r.am, pm:r.pm, tz:new Date().getTimezoneOffset() });
+  await api('/subscribe', { sub:sub.toJSON(), am:r.am, pm:r.pm, tz:new Date().getTimezoneOffset(), app:'th', uid:myUid() });
   return true;
 }
 async function pushTest(){
@@ -1021,6 +1054,12 @@ document.addEventListener('click', e => {
   else if(act === 'settings'){ renderSheet(); document.getElementById('sheet').classList.add('on'); }
   else if(act === 'push'){ subscribePush(); }
   else if(act === 'pushtest'){ pushTest(); }
+  else if(act === 'rv-star'){ S.rvStars = +b.dataset.v; document.querySelectorAll('[data-act="rv-star"]').forEach(x => { const v = +x.dataset.v; x.classList.toggle('on', v <= S.rvStars); x.setAttribute('aria-checked', v === S.rvStars); }); const l = document.getElementById('rv-lbl'); if(l) l.textContent = ['','Ruim','Fraco','Ok','Bom','Ótimo'][S.rvStars]; }
+  else if(act === 'rv-send'){ rvSend(b.dataset.day || S.day, b.dataset.date || ymd()); }
+  else if(act === 'rv-mic'){ micToggle(b); }
+  else if(act === 'rv-again'){ S.rvAgain = b.dataset.date || ymd(); render(); }
+  else if(act === 'cm-yes' || act === 'cm-no'){ cmDecide(b.dataset.id, act === 'cm-no'); }
+  else if(act === 'cm-seen'){ S.notes.filter(n => n.claude).forEach(n => S.cmSeen.add(n.id)); cmSave(); render(); }
   else if(act === 'sp-on'){ spConnect(); }
   else if(act === 'sp-off'){ SP.tok = null; SP.now = null; spSave(); clearInterval(SP.poll); renderSheet(); render(); toast('Spotify desconectado'); }
   else if(act.startsWith('sp-')){ spCmd(act); }
@@ -1170,6 +1209,96 @@ async function spCmd(act){
 }
 document.addEventListener('visibilitychange', () => { if(!document.hidden && SP.tok) spPoll(); });
 
+/* ---------- avaliação do treino ----------
+   Ele avalia o treino (estrelas + comentários/dúvidas, por texto ou voz) → o servidor responde na hora com a IA grátis
+   do Cloudflare → às 22h o Claude revisa, responde e pode propor mudança no plano, que ele aprova aqui. */
+function myUid(){
+  let u = localStorage.getItem('treino-uid');
+  if(!u || !/^[a-z0-9]{12,40}$/.test(u)){ u = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g, '').slice(0, 32); localStorage.setItem('treino-uid', u); }
+  return u;
+}
+function cmLoad(){ try{ S.notes = JSON.parse(localStorage.getItem('treino-notes') || '[]'); }catch(e){ S.notes = []; } try{ S.cmSeen = new Set(JSON.parse(localStorage.getItem('treino-notes-seen') || '[]')); }catch(e){ S.cmSeen = new Set(); } }
+function cmSave(){ try{ localStorage.setItem('treino-notes', JSON.stringify(S.notes.slice(-200))); localStorage.setItem('treino-notes-seen', JSON.stringify([...S.cmSeen].slice(-400))); }catch(e){} }
+const cmTyping = () => document.activeElement && document.activeElement.tagName === 'TEXTAREA';
+async function cmFetch(){
+  if(!navigator.onLine) return;
+  try{ const r = await api('/notes', { uid:myUid() }); const before = JSON.stringify(S.notes); S.notes = r.notes || []; cmSave(); if(JSON.stringify(S.notes) !== before && !cmTyping()) render(); }catch(e){}
+}
+function cmItem(n){
+  let h = `<div class="cm-item ${n.claude && !S.cmSeen.has(n.id) ? 'cm-new' : ''}"><div class="me"><b>Você · ${fmtDate(n.date)}</b>${n.rating ? ` <span class="st" aria-label="${n.rating} de 5 estrelas">${'★'.repeat(n.rating)}<span>${'★'.repeat(5 - n.rating)}</span></span>` : ''}${n.text ? '<br>' + esc(n.text) : ''}</div>`;
+  if(n.ai) h += `<div class="rp"><b>Resposta rápida:</b> ${esc(n.ai.text)}</div>`;
+  h += n.claude ? `<div class="rp"><b>Claude:</b> ${esc(n.claude.text)}</div>` : `<div class="rp"><i>🌙 O Claude revisa com calma às 22h.</i></div>`;
+  const c = n.change;
+  if(c){
+    if(c.status === 'proposta') h += `<div class="cm-chg"><b>Sugestão de mudança no treino:</b> ${esc(c.summary)}${c.detail ? '<br><span class="tg">' + esc(c.detail) + '</span>' : ''}<div class="row"><button class="btn sm" data-act="cm-yes" data-id="${n.id}">Aplicar essa mudança</button><button class="btn sm ghost" data-act="cm-no" data-id="${n.id}">Agora não</button></div></div>`;
+    else if(c.status === 'aprovada') h += `<div class="cm-chg">✅ Você aprovou: <b>${esc(c.summary)}</b>. O Claude aplica no seu treino na próxima revisão.</div>`;
+    else if(c.status === 'aplicada') h += `<div class="cm-chg">✅ Aplicado no seu treino: <b>${esc(c.summary)}</b>${c.note ? '<br><span class="tg">' + esc(c.note) + '</span>' : ''}</div>`;
+    else if(c.status === 'recusada') h += `<div class="rp"><i>Você preferiu manter como está.</i></div>`;
+  }
+  return h + `</div>`;
+}
+function rvCard(dayKey = S.day, date = ymd(), embed = false){
+  const plan = PLAN[dayKey], key = 'treino-' + dayKey;
+  const mine = (S.notes || []).filter(n => n.ex === key && (!embed || n.date === date)).slice(-2).reverse();
+  const sent = mine.some(n => n.date === date), st = S.rvStars || 0;
+  let h = embed ? `<div class="rv rv-in"><b class="rv-t">⭐ Avaliar este treino</b>` : `<section class="card glass rv"><h3>⭐ Avaliar treino</h3>`;
+  if(!sent || S.rvAgain === date){
+    h += `<p class="hint">Como foi o ${esc(TYPES[plan.type].label)} ${date === ymd() ? 'de hoje' : 'de ' + fmtDate(date)}? Dê uma nota e deixe seus comentários ou dúvidas.</p>
+    <div class="stars" role="radiogroup" aria-label="Nota do treino">${[1,2,3,4,5].map(v => `<button data-act="rv-star" data-v="${v}" class="${v <= st ? 'on' : ''}" role="radio" aria-checked="${v === st}" aria-label="${v} ${v === 1 ? 'estrela' : 'estrelas'}">★</button>`).join('')}<span class="lbl" id="rv-lbl">${['Toque para dar a nota','Ruim','Fraco','Ok','Bom','Ótimo'][st]}</span></div>
+    <div class="rv-wrap"><textarea id="rv-text" class="rv-ta" maxlength="1000" placeholder="O que achou do treino? Alguma dúvida? Escreva ou toque no 🎤 e fale." aria-label="Comentários e dúvidas sobre o treino"></textarea>
+    ${SR ? `<button class="mic" data-act="rv-mic" aria-label="Falar em vez de escrever" aria-pressed="false">${ICON.mic}</button>` : ''}</div>
+    <p class="mic-st" id="rv-mic-st">${SR ? 'Toque no 🎤 para falar. Toque de novo para parar.' : 'Dica: use o microfone do teclado para ditar.'}</p>
+    <button class="btn" data-act="rv-send" data-day="${dayKey}" data-date="${date}">Enviar avaliação</button>`;
+  } else h += `<p class="hint" style="margin-bottom:10px">Avaliação ${date === ymd() ? 'de hoje ' : ''}enviada. <button class="tbtn" data-act="rv-again" data-date="${date}">Avaliar de novo</button></p>`;
+  if(mine.length) h += `<div style="margin-top:12px">${mine.map(cmItem).join('')}</div>`;
+  return h + (embed ? '</div>' : '</section>');
+}
+function cmCard(){
+  const nw = (S.notes || []).filter(n => n.claude && !S.cmSeen.has(n.id));
+  if(!nw.length) return '';
+  return `<section class="card glass cm-new"><h3>💬 O Claude respondeu ${nw.length === 1 ? 'sua avaliação' : nw.length + ' avaliações'}</h3>
+    ${nw.slice(-3).map(n => `<p class="hint" style="margin:10px 0 4px"><b style="color:var(--text)">${esc(n.exName)}</b></p>` + cmItem(n)).join('')}
+    <button class="btn sm ghost" data-act="cm-seen">Ok, li</button></section>`;
+}
+// ditado por voz (reconhecimento de fala do Chrome, em português, grátis)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function micStop(){ try{ rec && rec.stop(); }catch(e){} }
+function micToggle(btn){
+  if(rec){ micStop(); return; }
+  const ta = document.getElementById('rv-text'), st = document.getElementById('rv-mic-st');
+  if(!ta || !SR) return;
+  const base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
+  let finalTxt = '';
+  rec = new SR(); rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true;
+  rec.onresult = e => { let interim = ''; for(let i = e.resultIndex; i < e.results.length; i++){ const r = e.results[i]; if(r.isFinal) finalTxt += r[0].transcript + ' '; else interim += r[0].transcript; } ta.value = (base + finalTxt + interim).slice(0, 1000); };
+  rec.onstart = () => { btn.classList.add('on'); btn.setAttribute('aria-pressed', 'true'); if(st) st.textContent = '🔴 Ouvindo… fale à vontade. Toque no 🎤 para parar.'; };
+  rec.onerror = e => { if(st) st.textContent = e.error === 'not-allowed' ? 'Permita o microfone para o app nas configurações.' : e.error === 'no-speech' ? 'Não ouvi nada. Toque no 🎤 e tente de novo.' : 'O ditado parou. Toque no 🎤 para continuar.'; };
+  rec.onend = () => { rec = null; btn.classList.remove('on'); btn.setAttribute('aria-pressed', 'false'); if(st && st.textContent.startsWith('🔴')) st.textContent = 'Pronto. Confira o texto e envie, ou toque no 🎤 para falar mais.'; ta.value = ta.value.replace(/\s+$/, ''); };
+  try{ rec.start(); }catch(e){ rec = null; }
+}
+async function rvSend(dayKey = S.day, date = ymd()){
+  micStop();
+  const ta = document.getElementById('rv-text'), text = (ta && ta.value || '').trim(), rating = S.rvStars || null;
+  if(!text && !rating){ toast('Dê uma nota ou escreva um comentário'); return; }
+  const plan = PLAN[dayKey], d = date === ymd() ? draft(dayKey) : { log:{}, wt:{} }, today = date;
+  const lastPain = [...S.pain].sort((a, b) => b.ts - a.ts)[0];
+  const sess = S.sessions.filter(x => x.date === date && x.day === dayKey).sort((a, b) => b.finishedAt - a.finishedAt)[0];
+  const feito = plan.ex.map(ex => { const sets = (sess && sess.log && sess.log[ex.id]) || (date === ymd() ? ((d.log || {})[ex.id] || []).filter(x => x.done) : []); if(!sets.length) return null; const w = Math.max(0, ...sets.map(x => +x.w || 0)) || (date === ymd() && d.wt ? parseFloat(String(d.wt[ex.id] || '').replace(',', '.')) || 0 : 0); return `${ex.name} ${sets.length}/${ex.sets}${w ? ' (' + fmtNum(w) + ' kg)' : ''}`; }).filter(Boolean).join('; ');
+  const btn = document.querySelector('[data-act="rv-send"]'); if(btn){ btn.disabled = true; btn.textContent = 'Enviando…'; }
+  try{
+    const r = await api('/note', { uid:myUid(), app:'th', date, ex:'treino-' + dayKey, exName:`${TYPES[plan.type].label} · ${plan.title}`, text, rating,
+      ctx:{ series: plan.ex.map(e => `${e.name} ${e.sets}×${e.reps}`).join('; '), load: feito || 'nenhuma série marcada', phase:'', pain: lastPain ? lastPain.value : null, obs: plan.note } });
+    S.notes.push(r.note); cmSave(); S.rvStars = 0; S.rvAgain = null; render(); toast('Avaliação enviada');
+    setTimeout(() => { const el = document.querySelector('.rv'); if(el) el.scrollIntoView({ behavior:'smooth', block:'center' }); }, 100);
+  }catch(e){ toast(navigator.onLine ? 'Não deu pra enviar. Tente de novo.' : 'Sem internet. Tente de novo depois.'); if(btn){ btn.disabled = false; btn.textContent = 'Enviar avaliação'; } }
+}
+async function cmDecide(id, no){
+  try{ const r = await api('/approve', { uid:myUid(), id, no:!!no }); const n = S.notes.find(x => x.id === id); if(n) n.change = r.change; cmSave(); render(); toast(no ? 'Ok, fica como está' : 'Aprovado! O Claude aplica às 22h.'); }
+  catch(e){ toast('Não deu pra enviar. Tente de novo.'); }
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden) cmFetch(); });
+
 /* ---------- tela de abertura: só quando o app abre do zero (não ao voltar de outro app) ---------- */
 function showIntro(){
   const el = document.getElementById('intro');
@@ -1187,6 +1316,7 @@ function showIntro(){
   S.program = L.program || defaultProgram();
   seed31();
   S.pushOn = !!localStorage.getItem('treino-push-on');
+  cmLoad();
   S.drafts = L.drafts || {}; S.sessions = L.sessions || []; S.pain = L.pain || [];
   Object.keys(S.drafts).forEach(k => { if(!S.drafts[k] || S.drafts[k].date !== ymd()) delete S.drafts[k]; });
   const h = location.hash.slice(1); if(['treino','progresso','joelho','guia'].includes(h)) S.tab = h;
@@ -1195,6 +1325,8 @@ function showIntro(){
   render();
   if(spBack) document.getElementById('intro').classList.add('off'); else showIntro();
   spHandleRedirect().then(back => { if(!back) spStart(); });
+  cmFetch();
+  if(S.pushOn) syncPush().catch(() => {}); // liga o celular às respostas do Claude
   persistStorage();
   if(PWA) navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
 })();
