@@ -309,6 +309,8 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 #intro h1{ font-family:var(--display); font-weight:800; font-size:38px; letter-spacing:-.02em; margin:8px 0 0; animation:introUp .6s .15s both; }
 #intro p{ margin:0; max-width:290px; color:var(--muted); font-size:15px; line-height:1.45; animation:introUp .6s .25s both; }
 #intro .chip{ margin-top:6px; font-size:13px; animation:introUp .6s .35s both; }
+#intro .tap{ position:absolute; bottom:calc(36px + env(safe-area-inset-bottom,0px)); color:var(--dim); font-size:13px; letter-spacing:.04em; animation:introUp .6s .6s both, tapPulse 2s 1.2s ease-in-out infinite; }
+@keyframes tapPulse{ 50%{ opacity:.45; } }
 @keyframes introPop{ from{ transform:scale(.7); opacity:0; } to{ transform:none; opacity:1; } }
 @keyframes introUp{ from{ transform:translateY(10px); opacity:0; } to{ transform:none; opacity:1; } }
 </style>
@@ -320,6 +322,7 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
   <h1>Treino TH</h1>
   <p>PPL 5x + futevôlei 2x, com o joelho protegido.</p>
   <span class="chip" id="introWk" style="--c:#a98bff"></span>
+  <small class="tap">Toque para começar</small>
 </div>
 <main id="app"></main>
 
@@ -1059,7 +1062,7 @@ function showIntro(){
   document.getElementById('introWk').textContent = (ci.notStarted ? 'Ciclo começa em breve' : `Semana ${ci.week} de ${ci.weeks}`) + ' · hoje: ' + (plan.type === 'rest' ? 'descanso' : TYPES[plan.type].label);
   const hide = () => el.classList.add('off');
   el.addEventListener('click', hide, { once:true });
-  setTimeout(hide, 1700);
+  setTimeout(hide, 10000); // fica até o toque, ou some sozinha em 10 s
 }
 
 /* ---------- início ---------- */
