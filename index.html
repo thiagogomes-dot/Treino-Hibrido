@@ -301,6 +301,17 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 .futcard .tx span{ font-size:12.5px; color:var(--muted); }
 .futcard .btn{ width:auto; flex-shrink:0; }
 .leg-ball{ display:inline-flex; vertical-align:middle; margin-right:6px; }
+/* mini player do Spotify */
+.sp{ display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:12px; border-radius:22px; }
+.sp .cv{ width:48px; height:48px; border-radius:12px; flex-shrink:0; background:rgba(255,255,255,.06) center/cover; display:grid; place-items:center; }
+.sp .tx{ flex:1; min-width:0; }
+.sp .tx b{ display:block; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sp .tx span{ display:block; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sp .tx i{ display:block; font-style:normal; color:#1ed760; font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sp .ctl{ display:flex; gap:4px; flex-shrink:0; }
+.sp .ctl button{ width:42px; height:42px; border-radius:50%; border:1px solid var(--stroke2); background:rgba(255,255,255,.05); display:grid; place-items:center; color:var(--text); }
+.sp .ctl button.pp{ background:#1ed760; border-color:#1ed760; color:#0b0a12; }
+.sp .ctl svg{ width:18px; height:18px; }
 /* tela de abertura */
 #intro{ position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center;
   background:radial-gradient(circle at 50% 38%,#2c2256 0%,#120d24 55%,#07060d 100%); transition:opacity .45s ease, visibility .45s ease; }
@@ -544,7 +555,7 @@ function render(){
     html += `<div class="week" role="tablist" aria-label="Dias da semana">` + weekState().map(w => {
       const c = TYPES[PLAN[w.k].type].c, rest = w.k === 'dom';
       return `<button class="wd ${w.k===S.day?'sel':''} ${w.today?'today':''} ${w.done?'done':''} ${w.part?'part':''} ${rest?'off':''}" style="--c:${c}" data-act="day" data-day="${w.k}" role="tab" aria-selected="${w.k===S.day}" aria-label="${DFULL[w.k]}${w.done?', concluído':''}"><div class="l">${DLABEL[w.k]}</div>${hasFut(dateOfDay(w.k)) ? `<i class="fb">${BALL(13)}</i>` : ''}<div class="s">${w.done?ICON.check.replace('stroke-width="3"','stroke-width="3.5" width="12" height="12"'):''}</div></button>`;
-    }).join('') + `</div>` + installCard() + viewTreino();
+    }).join('') + `</div>` + installCard() + spCard() + viewTreino();
   }
   if(S.tab === 'progresso') html += viewProgresso(ci);
   if(S.tab === 'joelho') html += viewJoelho();
@@ -791,6 +802,8 @@ function renderSheet(){
     <div class="optrow"><p>Manhã<small>Primeiro lembrete do dia</small></p><input type="time" data-k="ram" value="${remind().am}" aria-label="Horário do lembrete da manhã"></div>
     <div class="optrow"><p>Noite<small>Se o treino já foi feito, vira o check-in do joelho</small></p><input type="time" data-k="rpm" value="${remind().pm}" aria-label="Horário do lembrete da noite"></div>
     <div class="optrow"><p>Receber neste celular<small>${S.pushOn ? 'Ativado. Os lembretes chegam nos horários acima, todo dia.' : 'Liga os lembretes de manhã e de noite neste celular.'}</small></p>${S.pushOn ? '<button class="btn sm ghost" data-act="pushtest">Testar</button><button class="btn sm ghost" data-act="pushoff">Desligar</button>' : '<button class="btn sm" data-act="push">Ativar</button>'}</div>` : ''}
+    ${spEnabled() ? `<h4>Música</h4>
+    <div class="optrow"><p>Spotify<small>${SP.tok ? 'Conectado. Controle a música pela tela de treino.' : 'Tocar, pausar e pular música sem sair do app (precisa do Premium).'}</small></p>${SP.tok ? '<button class="btn sm ghost" data-act="sp-off">Desconectar</button>' : '<button class="btn sm" data-act="sp-on">Conectar</button>'}</div>` : ''}
     <h4>Backup dos dados</h4>
     <div class="optrow"><p>Copiar backup<small>Leva seu histórico pra outro aparelho ou versão do app</small></p><button class="btn sm ghost" data-act="export">Copiar</button></div>
     <textarea class="bk" id="bk" placeholder="Cole aqui um backup para importar" aria-label="Backup"></textarea>
@@ -1008,6 +1021,9 @@ document.addEventListener('click', e => {
   else if(act === 'settings'){ renderSheet(); document.getElementById('sheet').classList.add('on'); }
   else if(act === 'push'){ subscribePush(); }
   else if(act === 'pushtest'){ pushTest(); }
+  else if(act === 'sp-on'){ spConnect(); }
+  else if(act === 'sp-off'){ SP.tok = null; SP.now = null; spSave(); clearInterval(SP.poll); renderSheet(); render(); toast('Spotify desconectado'); }
+  else if(act.startsWith('sp-')){ spCmd(act); }
   else if(act === 'pushoff'){ pushOff(); }
   else if(act === 'notif'){ if('Notification' in window) Notification.requestPermission().then(() => { renderSheet(); if(Notification.permission === 'granted') toast('Aviso do descanso ativado'); }); }
   else if(act === 'testrest'){ swPost({ type:'rest', end:Date.now() + 5000, next:'teste do aviso', force:true }).then(ok => toast(ok ? 'Bloqueie a tela: o aviso chega em 5 s' : 'Service worker ainda não está ativo. Recarregue o app.')); }
@@ -1054,6 +1070,106 @@ document.addEventListener('change', e => {
   if((k === 'ram' || k === 'rpm') && t.value){ S.program.remind = Object.assign(remind(), { [k === 'ram' ? 'am' : 'pm']: t.value }); saveProgram(); if(S.pushOn) syncPush().then(() => toast('Horário salvo'), () => toast('Salvo no app; o servidor não respondeu')); else toast('Horário salvo'); }
 });
 
+/* ---------- Spotify (Web API com login PKCE, sem servidor; controla o Spotify que está tocando no celular) ---------- */
+const SPOTIFY_ID = '97a18fb0dd514659bee6f6bfecaad08b';
+const SP_REDIRECT = location.origin + location.pathname;
+const SP_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+const SP = { tok:null, now:null, poll:null };
+const spEnabled = () => !SPOTIFY_ID.startsWith('__');
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const SPI = {
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
+  pause:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
+  next:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5.5v13l9-6.5zM16 5h2.5v14H16z"/></svg>',
+  prev:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 5.5v13l-9-6.5zM5.5 5H8v14H5.5z"/></svg>',
+  note:'<svg viewBox="0 0 24 24" fill="#1ed760" width="22" height="22"><path d="M9 17.5a2.5 2.5 0 1 1-2-2.45V5l11-2v11.5a2.5 2.5 0 1 1-2-2.45V7.1l-7 1.3z"/></svg>'
+};
+function spLoad(){ try{ SP.tok = JSON.parse(localStorage.getItem('treino-sp') || 'null'); }catch(e){ SP.tok = null; } }
+function spSave(){ try{ SP.tok ? localStorage.setItem('treino-sp', JSON.stringify(SP.tok)) : localStorage.removeItem('treino-sp'); }catch(e){} }
+async function spConnect(){
+  const v = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const ch = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v)));
+  const st = b64url(crypto.getRandomValues(new Uint8Array(12)));
+  localStorage.setItem('treino-sp-pkce', JSON.stringify({ v, st }));
+  location.href = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({ client_id:SPOTIFY_ID, response_type:'code', redirect_uri:SP_REDIRECT, code_challenge_method:'S256', code_challenge:ch, scope:SP_SCOPES, state:st });
+}
+async function spToken(params){
+  const r = await fetch('https://accounts.spotify.com/api/token', { method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:new URLSearchParams({ client_id:SPOTIFY_ID, ...params }) });
+  if(!r.ok) throw new Error('token ' + r.status);
+  const j = await r.json();
+  SP.tok = { access:j.access_token, refresh:j.refresh_token || (SP.tok && SP.tok.refresh), exp:Date.now() + (j.expires_in - 60) * 1000 };
+  spSave();
+}
+// volta do login do Spotify: troca o código pelo token e limpa a URL
+async function spHandleRedirect(){
+  const q = new URLSearchParams(location.search);
+  if(!q.has('code') && !q.has('error')) return false;
+  let pk = null; try{ pk = JSON.parse(localStorage.getItem('treino-sp-pkce') || 'null'); }catch(e){}
+  localStorage.removeItem('treino-sp-pkce');
+  history.replaceState(null, '', SP_REDIRECT);
+  if(q.has('error') || !pk || q.get('state') !== pk.st){ toast('Spotify não conectado'); return true; }
+  try{ await spToken({ grant_type:'authorization_code', code:q.get('code'), redirect_uri:SP_REDIRECT, code_verifier:pk.v }); toast('Spotify conectado 🎵'); render(); spStart(); }
+  catch(e){ toast('Não deu pra conectar o Spotify'); }
+  return true;
+}
+async function spFetch(path, opt = {}, retry = true){
+  if(!SP.tok) return null;
+  if(Date.now() > SP.tok.exp){
+    try{ await spToken({ grant_type:'refresh_token', refresh_token:SP.tok.refresh }); }
+    catch(e){ SP.tok = null; spSave(); render(); toast('Conecte o Spotify de novo nos Ajustes'); return null; }
+  }
+  const r = await fetch('https://api.spotify.com/v1' + path, { ...opt, headers:{ Authorization:'Bearer ' + SP.tok.access, ...(opt.body ? { 'Content-Type':'application/json' } : {}) } });
+  if(r.status === 401 && retry){ SP.tok.exp = 0; return spFetch(path, opt, false); }
+  return r;
+}
+async function spPoll(){
+  if(!SP.tok || document.hidden) return;
+  try{
+    const r = await spFetch('/me/player');
+    if(!r) return;
+    if(r.status === 204){ SP.now = { idle:true }; }
+    else if(r.ok){
+      const j = await r.json(), it = j.item || {};
+      const imgs = (it.album && it.album.images) || it.images || [];
+      SP.now = { playing:j.is_playing, title:it.name || '—', artist:(it.artists || []).map(a => a.name).join(', ') || (it.show && it.show.name) || '', img:(imgs[imgs.length - 1] || imgs[0] || {}).url || '', device:j.device && j.device.name };
+    }
+  }catch(e){}
+  spPaint();
+}
+function spStart(){ clearInterval(SP.poll); if(!SP.tok) return; spPoll(); SP.poll = setInterval(spPoll, 5000); }
+function spInner(){
+  const n = SP.now;
+  if(!n) return `<div class="cv">${SPI.note}</div><div class="tx"><i>SPOTIFY</i><b>Carregando…</b></div>`;
+  if(n.idle) return `<div class="cv">${SPI.note}</div><div class="tx"><i>SPOTIFY</i><b>Nada tocando</b><span>Toque ▶ para continuar de onde parou</span></div>
+    <div class="ctl"><button class="pp" data-act="sp-play" aria-label="Tocar">${SPI.play}</button></div>`;
+  return `<div class="cv" style="${n.img ? `background-image:url('${esc(n.img)}')` : ''}">${n.img ? '' : SPI.note}</div>
+    <div class="tx"><i>SPOTIFY${n.device ? ' · ' + esc(n.device) : ''}</i><b>${esc(n.title)}</b><span>${esc(n.artist)}</span></div>
+    <div class="ctl"><button data-act="sp-prev" aria-label="Música anterior">${SPI.prev}</button><button class="pp" data-act="${n.playing ? 'sp-pause' : 'sp-play'}" aria-label="${n.playing ? 'Pausar' : 'Tocar'}">${n.playing ? SPI.pause : SPI.play}</button><button data-act="sp-next" aria-label="Próxima música">${SPI.next}</button></div>`;
+}
+function spCard(){ return spEnabled() && SP.tok ? `<section class="sp glass" id="spcard" aria-label="Spotify">${spInner()}</section>` : ''; }
+function spPaint(){ const el = document.getElementById('spcard'); if(el) el.innerHTML = spInner(); }
+// sem aparelho ativo: acorda o Spotify do celular (ou o primeiro disponível)
+async function spWake(){
+  const r = await spFetch('/me/player/devices'); if(!r || !r.ok) return false;
+  const ds = (await r.json()).devices || [];
+  const d = ds.find(x => x.type === 'Smartphone') || ds[0];
+  if(!d){ toast('Abra o Spotify no celular e toque uma música uma vez'); return false; }
+  await spFetch('/me/player', { method:'PUT', body:JSON.stringify({ device_ids:[d.id], play:true }) });
+  return true;
+}
+async function spCmd(act){
+  const map = { 'sp-play':['PUT','/me/player/play'], 'sp-pause':['PUT','/me/player/pause'], 'sp-next':['POST','/me/player/next'], 'sp-prev':['POST','/me/player/previous'] };
+  const [method, path] = map[act];
+  if(SP.now && !SP.now.idle && (act === 'sp-play' || act === 'sp-pause')){ SP.now.playing = act === 'sp-play'; spPaint(); }
+  try{
+    const r = await spFetch(path, { method });
+    if(r && r.status === 404){ await spWake(); }
+    else if(r && r.status === 403){ toast('O Spotify recusou: precisa do Premium'); }
+  }catch(e){ toast('Spotify não respondeu'); }
+  setTimeout(spPoll, 500);
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden && SP.tok) spPoll(); });
+
 /* ---------- tela de abertura: só quando o app abre do zero (não ao voltar de outro app) ---------- */
 function showIntro(){
   const el = document.getElementById('intro');
@@ -1074,8 +1190,11 @@ function showIntro(){
   S.drafts = L.drafts || {}; S.sessions = L.sessions || []; S.pain = L.pain || [];
   Object.keys(S.drafts).forEach(k => { if(!S.drafts[k] || S.drafts[k].date !== ymd()) delete S.drafts[k]; });
   const h = location.hash.slice(1); if(['treino','progresso','joelho','guia'].includes(h)) S.tab = h;
+  spLoad();
+  const spBack = location.search.includes('code=') || location.search.includes('error=');
   render();
-  showIntro();
+  if(spBack) document.getElementById('intro').classList.add('off'); else showIntro();
+  spHandleRedirect().then(back => { if(!back) spStart(); });
   persistStorage();
   if(PWA) navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
 })();

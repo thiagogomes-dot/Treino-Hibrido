@@ -148,7 +148,13 @@ notificação local **só se a página estiver oculta e o JS ainda rodando**. Wa
   10), botões +15 s e Pular (sincronizam o timer do app por `postMessage` `rest-sync`/`rest-skip`), vira alarme no zero.
 - Tela de abertura (`#intro`): avatar, "Treino TH", "PPL 5x + futevôlei 2x, com o joelho protegido.", semana do
   ciclo e treino do dia; fica até o toque ("Toque para começar") ou some sozinha em 10 s (~~1,7 s~~, pedido do Thiago 2026-11-05); pulada quando o app abre com hash (notificação).
-- Próximos: Spotify (Thiago tem Premium; Web API + PKCE, sem servidor), depois iPhone.
+- **Spotify** (2026-11-05): app "Treino TH" no developer.spotify.com da conta do Thiago (Premium), só Web API.
+  Client ID `97a18fb0dd514659bee6f6bfecaad08b` (público; o secret não é usado). Redirect URIs cadastradas:
+  `https://thiagogomes-dot.github.io/Treino-Hibrido/` e `http://127.0.0.1:8790/` (o Spotify não aceita `localhost`).
+  Login PKCE direto do app (`spConnect`/`spHandleRedirect`), token em `localStorage` `treino-sp`. Mini player na aba
+  Treino (`#spcard`), atualiza a cada 5 s; ⏮ ⏯ ⏭; sem aparelho ativo, transfere para o Smartphone (`spWake`).
+  Escopos: user-read-playback-state, user-modify-playback-state, user-read-currently-playing.
+- Próximo: iPhone.
 
 ## Em aberto
 
