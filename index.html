@@ -301,6 +301,15 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 .futcard .tx span{ font-size:12.5px; color:var(--muted); }
 .futcard .btn{ width:auto; flex-shrink:0; }
 .leg-ball{ display:inline-flex; vertical-align:middle; margin-right:6px; }
+/* recordes, sugestão de carga e semana */
+.sug{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); background:color-mix(in srgb,var(--acc) 10%,transparent); border:1px solid color-mix(in srgb,var(--acc) 28%,transparent); border-radius:12px; padding:8px 10px; margin-bottom:10px; }
+.sug b{ color:var(--text); }
+.sug .tbtn{ height:30px; margin-left:auto; }
+.sug.up b{ color:var(--acc); }
+.prs{ margin:4px 0 14px; padding:12px 14px; border-radius:16px; text-align:left; font-size:13.5px; line-height:1.6; background:linear-gradient(135deg,rgba(255,207,92,.18),rgba(255,207,92,.04)); border:1px solid rgba(255,207,92,.45); }
+.prs b{ display:block; font-size:15px; margin-bottom:2px; }
+.wk-sum .stats{ margin:10px 0 0; }
+.wk-sum .delta.up{ color:var(--ok); } .wk-sum .delta.down{ color:#e5484d; }
 /* avaliação do treino */
 .cal-ex{ list-style:none; margin:6px 0 2px; padding:0; font-size:12.5px; }
 .cal-ex li{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; color:var(--muted); }
@@ -620,7 +629,7 @@ function viewTreino(){
     <section class="donecard glass"><div class="big">${ICON.check}</div><h2>Treino concluído</h2><p class="hint" style="color:var(--muted);margin:0">${DFULL[day]}, ${fmtDate(done.date)}</p>
       <div class="stats"><div class="stat"><b>${done.sets}</b><span>séries</span></div><div class="stat"><b>${fmtNum(done.volume)}</b><span>kg de volume</span></div><div class="stat"><b>${mins ? mins + 'min' : '—'}</b><span>duração</span></div></div>
       ${plan.futev ? `<button class="btn" data-act="tab" data-tab="joelho" style="margin-bottom:8px">Registrar dor pós-futevôlei</button>` : ''}
-      <button class="btn ghost" data-act="redo">Registrar outro treino hoje</button></section>${rvCard()}${futCard(day)}`;
+      ${prList(done)}<button class="btn ghost" data-act="redo">Registrar outro treino hoje</button></section>${rvCard()}${futCard(day)}`;
   }
   const d = draft(day);
   const total = plan.ex.length, doneCount = plan.ex.filter(e => exDone(d, e)).length;
@@ -644,6 +653,7 @@ function viewTreino(){
       <div class="ex-b">
         <p class="obs">${esc(ex.obs)}</p>
         ${best ? `<div class="last">Última vez: <em>${best.w ? fmtNum(best.w) + ' kg × ' : ''}${best.r} reps</em></div>` : ''}
+        ${sugHtml(ex, d)}
         ${ex.kind !== 'time' ? `<div class="wrow"><span class="lbl">Carga<small>Vale para todas as séries</small></span><label class="fld"><input inputmode="decimal" data-k="w" data-ex="${ex.id}" value="${esc(d.wt[ex.id] ?? '')}" placeholder="${best && best.w ? fmtNum(best.w) : '0'}" aria-label="Carga do exercício em kg"><span>kg</span></label></div>` : ''}
         <div class="sprog"><div class="sprog-top"><span>${ex.sets} × ${esc(ex.reps)}</span><b>${doneSets} de ${ex.sets} séries</b></div>
           <div class="sbar" role="progressbar" aria-valuenow="${doneSets}" aria-valuemin="0" aria-valuemax="${ex.sets}" aria-label="Séries concluídas">${sets.map(s => `<i class="${s.done?'on':''}"></i>`).join('')}</div></div>
@@ -736,7 +746,7 @@ function viewProgresso(ci){
   if(!S.progEx || !ids.includes(S.progEx)) S.progEx = ids[0] || null;
   const totalSets = ci.inCycle.reduce((a,s) => a + (s.sets||0), 0);
   const totalVol = ci.inCycle.reduce((a,s) => a + (s.volume||0), 0);
-  let h = viewCalendar() + `<section class="card glass"><h3>Neste ciclo</h3><div class="stats" style="margin-bottom:0"><div class="stat"><b>${ci.done}</b><span>treinos</span></div><div class="stat"><b>${totalSets}</b><span>séries</span></div><div class="stat"><b>${fmtNum(totalVol/1000)}t</b><span>volume</span></div></div></section>`;
+  let h = weekCard() + viewCalendar() + `<section class="card glass"><h3>Neste ciclo</h3><div class="stats" style="margin-bottom:0"><div class="stat"><b>${ci.done}</b><span>treinos</span></div><div class="stat"><b>${totalSets}</b><span>séries</span></div><div class="stat"><b>${fmtNum(totalVol/1000)}t</b><span>volume</span></div></div></section>`;
   if(!S.progEx){
     return h + `<section class="card glass"><div class="empty">Conclua seu primeiro treino para ver a evolução das cargas aqui.</div></section>`;
   }
@@ -753,7 +763,7 @@ function viewProgresso(ci){
   const recent = sessionsDesc().slice(0, 12);
   h += `<section class="card glass"><h3>Histórico</h3><ul class="hist">${recent.map(s => {
     const mins = s.startedAt ? Math.max(1, Math.round((s.finishedAt - s.startedAt)/60000)) + ' min' : '';
-    return `<li><span><span class="dot" style="--c:${TYPES[PLAN[s.day].type].c}"></span>${esc(PLAN[s.day].title)}<div class="d">${DFULL[s.day]}, ${fmtDate(s.date)}</div></span><span class="d" style="text-align:right">${s.manual ? 'manual' : s.sets + ' séries'}<br>${mins}</span></li>`;
+    return `<li><span><span class="dot" style="--c:${TYPES[PLAN[s.day].type].c}"></span>${esc(PLAN[s.day].title)}<div class="d">${DFULL[s.day]}, ${fmtDate(s.date)}</div></span><span class="d" style="text-align:right">${s.manual ? 'manual' : s.sets + ' séries'}${s.prs && s.prs.length ? ' · 🏆' + (s.prs.length > 1 ? s.prs.length : '') : ''}<br>${mins}</span></li>`;
   }).join('')}</ul></section>`;
   return h;
 }
@@ -1035,10 +1045,11 @@ document.addEventListener('click', e => {
       sets += done.length; volume += log[ex.id].reduce((a,s) => a + s.w*s.r, 0);
     });
     const sess = { id:uid('s'), day:S.day, date:d.date, startedAt:d.startedAt, finishedAt:Date.now(), log, sets, volume:Math.round(volume), pain:d.pain };
-    S.sessions.push(sess); saveSession(sess); markTrained();
+    sess.prs = findPRs(log);
+    S.sessions.push(sess); saveSession(sess); markTrained(); pushWeek();
     if(d.pain != null){ const p = { id:uid('p'), date:d.date, ts:Date.now(), value:d.pain, ctx:'Pós-treino' }; S.pain.push(p); savePain(p); }
     delete S.drafts[S.day]; S.open[S.day] = undefined; S.redo = false;
-    saveDrafts(); stopTimer(); render(); window.scrollTo({top:0, behavior:'smooth'}); toast('Treino concluído');
+    saveDrafts(); stopTimer(); render(); window.scrollTo({top:0, behavior:'smooth'}); toast(sess.prs.length ? `🏆 ${sess.prs.length} ${sess.prs.length === 1 ? 'novo recorde' : 'novos recordes'}!` : 'Treino concluído'); if(sess.prs.length) try{ navigator.vibrate && navigator.vibrate([80,60,80,60,200]); }catch(e){}
   }
   else if(act === 'redo'){ S.redo = true; S.drafts[S.day] = null; S.open[S.day] = undefined; render(); }
   else if(act === 'calm'){ S.calM = Math.min(0, (S.calM||0) + +b.dataset.d); S.calSel = null; render(); }
@@ -1053,6 +1064,7 @@ document.addEventListener('click', e => {
   else if(act === 'push'){ subscribePush(); }
   else if(act === 'pushtest'){ pushTest(); }
   else if(act === 'rv-star'){ S.rvStars = +b.dataset.v; document.querySelectorAll('[data-act="rv-star"]').forEach(x => { const v = +x.dataset.v; x.classList.toggle('on', v <= S.rvStars); x.setAttribute('aria-checked', v === S.rvStars); }); const l = document.getElementById('rv-lbl'); if(l) l.textContent = ['','Ruim','Fraco','Ok','Bom','Ótimo'][S.rvStars]; }
+  else if(act === 'sug-use'){ const id = b.dataset.ex, w = +b.dataset.w, d = draft(S.day); d.wt[id] = String(w).replace('.', ','); saveDrafts(); render(); toast('Carga sugerida aplicada'); }
   else if(act === 'rv-send'){ rvSend(b.dataset.day || S.day, b.dataset.date || ymd()); }
   else if(act === 'rv-mic'){ micToggle(b); }
   else if(act === 'rv-again'){ S.rvAgain = b.dataset.date || ymd(); render(); }
@@ -1297,6 +1309,74 @@ async function cmDecide(id, no){
 }
 document.addEventListener('visibilitychange', () => { if(!document.hidden) cmFetch(); });
 
+const wLabel = (w, id) => fmtNum(w) + ' kg', wVal = (w, id) => w;
+const INC = 2.5; // passo da progressão de carga (kg)
+const incFor = id => INC;
+const maxW = arr => Math.max(0, ...arr.map(x => +x.w || 0));
+// recordes: maior carga do exercício, ou mais repetições com a carga recorde
+function findPRs(log){
+  const out = [];
+  Object.entries(log).forEach(([id, sets]) => {
+    const w = maxW(sets); if(!w) return;
+    const prev = S.sessions.filter(s => s.log && s.log[id] && s.log[id].length);
+    if(!prev.length) return; // primeiro registro não conta como recorde
+    const pw = Math.max(...prev.map(s => maxW(s.log[id])));
+    const name = (ALLEX[id] || {}).name || id;
+    if(w > pw) out.push({ id, name, kind:'carga', w, txt:`${name}: ${wLabel(w, id)} (antes ${wLabel(pw, id)})` });
+    else if(w === pw){
+      const r = Math.max(...sets.filter(x => +x.w === w).map(x => +x.r || 0));
+      const pr = Math.max(0, ...prev.flatMap(s => s.log[id].filter(x => +x.w === w).map(x => +x.r || 0)));
+      if(r > pr && pr) out.push({ id, name, kind:'reps', w, r, txt:`${name}: ${r} reps com ${wLabel(w, id)} (antes ${pr})` });
+    }
+  });
+  return out;
+}
+const prList = s => s && s.prs && s.prs.length ? `<div class="prs"><b>🏆 ${s.prs.length === 1 ? 'Novo recorde!' : s.prs.length + ' novos recordes!'}</b>${s.prs.map(p => esc(p.txt)).join('<br>')}</div>` : '';
+// sugestão de carga (progressão dupla simples): 2 treinos completos com a mesma carga → sobe um passo
+function sugLoad(ex){
+  if(ex.kind === 'time') return null;
+  const hist = sessionsDesc().filter(s => !s.manual && s.log && s.log[ex.id] && s.log[ex.id].length);
+  if(!hist.length) return null;
+  const w0 = maxW(hist[0].log[ex.id]); if(!w0) return null;
+  const full = s => s.log[ex.id].length >= ex.sets;
+  const pain = S.pain.filter(p => dayDiff(new Date(), parseYmd(p.date)) <= 7).map(p => p.value);
+  if(pain.length && Math.max(...pain) >= 5) return { w:w0, why:'dor alta nesta semana: mantenha a carga' };
+  if(hist.length >= 2 && full(hist[0]) && full(hist[1]) && maxW(hist[1].log[ex.id]) === w0) return { w:w0 + incFor(ex.id), up:true, why:`2 treinos completos com ${wLabel(w0, ex.id)}` };
+  if(!full(hist[0])) return { w:w0, why:'complete todas as séries antes de subir' };
+  return { w:w0, why:'mais um treino completo e a carga sobe' };
+}
+function sugHtml(ex, d){
+  const g = sugLoad(ex); if(!g) return '';
+  const cur = String(d.wt[ex.id] ?? '');
+  return `<div class="sug ${g.up ? 'up' : ''}">💡 Sugestão: <b>${wLabel(g.w, ex.id)}</b><span>· ${g.why}</span>${cur === '' || Math.abs(num(cur) - wVal(g.w, ex.id)) > .01 ? `<button class="tbtn" data-act="sug-use" data-ex="${ex.id}" data-w="${g.w}">Usar</button>` : ''}</div>`;
+}
+// resumo da semana (segunda a domingo)
+function weekStats(off = 0){
+  const m = addDays(mondayOf(new Date()), -7 * off), e = addDays(m, 7);
+  const ss = S.sessions.filter(s => { const d = parseYmd(s.date); return d >= m && d < e; });
+  const pain = S.pain.filter(p => { const d = parseYmd(p.date); return d >= m && d < e; }).map(p => p.value);
+  return { start:ymd(m), n:ss.length, sets:ss.reduce((a, s) => a + (s.sets || 0), 0), vol:ss.reduce((a, s) => a + (s.volume || 0), 0),
+    prs:ss.reduce((a, s) => a + ((s.prs || []).length), 0), pain: pain.length ? pain.reduce((a, b) => a + b, 0) / pain.length : null };
+}
+function weekText(){
+  const w = weekStats(0), p = weekStats(1);
+  if(!w.n) return null;
+  const dv = p.vol ? Math.round((w.vol - p.vol) / p.vol * 100) : null;
+  return `${w.n} ${w.n === 1 ? 'treino' : 'treinos'} · ${w.sets} séries · volume ${fmtNum(w.vol / 1000)} t${dv != null ? ` (${dv >= 0 ? '+' : ''}${dv}% vs semana passada)` : ''}${w.prs ? ` · 🏆 ${w.prs} ${w.prs === 1 ? 'recorde' : 'recordes'}` : ''}${w.pain != null ? ` · dor média ${fmtNum(w.pain)}` : ''}`;
+}
+function weekCard(){
+  const w = weekStats(0), p = weekStats(1);
+  const dv = p.vol ? Math.round((w.vol - p.vol) / p.vol * 100) : null;
+  return `<section class="card glass wk-sum"><h3>Esta semana</h3><p class="hint" style="margin:0">${w.n ? 'Domingo à noite chega o resumo no celular.' : 'Nenhum treino registrado ainda nesta semana.'}</p>
+    <div class="stats"><div class="stat"><b>${w.n}</b><span>treinos</span></div><div class="stat"><b>${fmtNum(w.vol / 1000)}t</b><span>volume${dv != null ? ` <i class="delta ${dv >= 0 ? 'up' : 'down'}">${dv >= 0 ? '+' : ''}${dv}%</i>` : ''}</span></div><div class="stat"><b>${w.prs}</b><span>recordes</span></div></div></section>`;
+}
+// manda o texto da semana para o servidor, que envia o push no domingo às 20h
+function pushWeek(){
+  if(!S.pushOn || !navigator.onLine) return;
+  const t = weekText(); if(!t) return;
+  api('/summary', { uid:myUid(), week:weekStats(0).start, text:t }).catch(() => {});
+}
+
 /* ---------- tela de abertura: só quando o app abre do zero (não ao voltar de outro app) ---------- */
 function showIntro(){
   const el = document.getElementById('intro');
@@ -1324,6 +1404,7 @@ function showIntro(){
   if(spBack) document.getElementById('intro').classList.add('off'); else showIntro();
   spHandleRedirect().then(back => { if(!back) spStart(); });
   cmFetch();
+  pushWeek();
   if(S.pushOn) syncPush().catch(() => {}); // liga o celular às respostas do Claude
   persistStorage();
   if(PWA) navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});

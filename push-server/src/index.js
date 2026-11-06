@@ -3,7 +3,8 @@
 // - POST /subscribe   {sub, am:'06:00', pm:'21:00', tz:180, app?, uid?}  → guarda/atualiza o celular
 // - POST /unsubscribe {endpoint}                                         → remove
 // - POST /test        {endpoint}                                         → manda um push na hora
-// - cron a cada minuto: manda o lembrete da manhã e o da noite no horário de cada celular.
+// - cron a cada minuto: manda o lembrete da manhã e o da noite no horário de cada celular,
+//   e no domingo às 20h o resumo da semana (POST /summary {uid, week, text} guarda o texto).
 // Comentários nos exercícios (app da Kika):
 // - POST /note    {uid, ex, exName, text, rating, ctx} → avaliação do treino; guarda e devolve a resposta da IA grátis
 // - POST /notes   {uid}                               → comentários desse aparelho, com as respostas
@@ -35,7 +36,8 @@ const clip = (s, n) => String(s || '').slice(0, n);
 function localNow(tz){
   const d = new Date(Date.now() - (tz || 0) * 60000);
   const day = d.toISOString().slice(0, 10);
-  return { day, mins: d.getUTCHours() * 60 + d.getUTCMinutes() };
+  const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return { day, mins: d.getUTCHours() * 60 + d.getUTCMinutes(), dow: d.getUTCDay(), monday: mon.toISOString().slice(0, 10) };
 }
 const toMins = s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
 
@@ -138,6 +140,13 @@ export default {
       return json(req, { ok: status < 300, status });
     }
 
+    // ---- resumo da semana (o app manda o texto; o cron envia no domingo às 20h)
+    if(url.pathname === '/summary'){
+      if(!UID.test(b.uid || '')) return json(req, { error:'aparelho inválido' }, 400);
+      await env.SUBS.put('sum:' + b.uid, JSON.stringify({ week:clip(b.week, 10), text:clip(b.text, 300), ts:Date.now() }));
+      return json(req, { ok:true });
+    }
+
     // ---- comentários nos exercícios
     if(url.pathname === '/note'){
       if(!UID.test(b.uid || '')) return json(req, { error:'aparelho inválido' }, 400);
@@ -177,8 +186,17 @@ export default {
     let changed = false;
     const keep = [];
     for(const it of list){
-      const { day, mins } = localNow(it.tz);
+      const { day, mins, dow, monday } = localNow(it.tz);
       let dead = false;
+      // domingo às 20h: resumo da semana, se o app mandou o desta semana
+      if(dow === 0 && mins >= 1200 && mins < 1220 && it.uid && it.sent.sum !== day){
+        const sm = await env.SUBS.get('sum:' + it.uid, 'json');
+        if(sm && sm.week === monday){
+          const st = await sendPush(it.sub, { title:'Resumo da semana 💪', body:sm.text, url:'./#progresso' }, vapid(env)).catch(() => 0);
+          if(st === 404 || st === 410) dead = true;
+          else if(st && st < 300){ it.sent.sum = day; changed = true; }
+        } else { it.sent.sum = day; changed = true; }
+      }
       for(const slot of ['manha', 'noite']){
         const at = toMins(slot === 'manha' ? it.am : it.pm);
         // manda no minuto marcado; tolera até 20 min de atraso do cron, uma vez por dia

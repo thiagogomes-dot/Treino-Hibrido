@@ -171,3 +171,13 @@ O plano fica na constante `PLAN` de `index.html` (um objeto por dia, com a lista
    continua** (assim o histórico de carga e o gráfico de evolução seguem), e usar `id` novo só para exercício novo.
 3. Subir a versão do `CACHE` no `sw.js`, testar no navegador local, publicar.
 4. No app: Ajustes → "Começar novo ciclo hoje" (zera o contador de semanas; o histórico fica).
+
+## Recordes, sugestão de carga e resumo da semana (2026-11-05)
+
+- **Recordes** (`findPRs`): ao concluir o treino, maior carga do exercício (ou mais reps com a carga recorde) vs
+  histórico; o primeiro registro não conta. Ficam em `sess.prs`, aparecem no cartão de concluído e no histórico (🏆).
+- **Sugestão de carga** (`sugLoad`/`sugHtml`, botão "Usar"): 2 treinos completos seguidos com a mesma carga →
+  sobe um passo (`INC`: 2,5 kg no Treino TH, 2 kg na Kika; 5 lb se o exercício estiver em libras). Dor ≥ 5 nos
+  últimos 7 dias → manter. Série incompleta → manter.
+- **Resumo da semana**: cartão "Esta semana" em Progresso (`weekCard`); o app manda o texto (`POST /summary`) ao
+  abrir e ao concluir treino, e o Worker envia o push no domingo às 20h (hora local), só para celulares com lembretes ativos.
