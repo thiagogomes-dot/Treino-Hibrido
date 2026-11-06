@@ -658,7 +658,7 @@ function viewTreino(){
   h += `<section class="card glass" style="margin-top:14px"><h3>Joelho hoje</h3><p class="hint">Opcional. Ajuda a acompanhar o tendão ao longo do ciclo.</p>
     <div class="pain-val" style="--pc:${pv==null?'var(--dim)':painColor(pv)}"><b>${pv==null?'–':pv}</b><span>${pv==null?'Arraste para registrar':'de 10'}</span></div>
     <input type="range" min="0" max="10" step="1" value="${pv==null?0:pv}" data-k="pain" aria-label="Dor no joelho de 0 a 10"><div class="scale"><span>Sem dor</span><span>Dor forte</span></div></section>
-    <button class="btn" data-act="finish" ${anyDone?'':'disabled'}>${doneCount === total ? 'Concluir treino' : anyDone ? `Concluir com ${doneCount} de ${total} exercícios` : 'Marque uma série para concluir'}</button>` + (anyDone ? rvCard() : '');
+    <button class="btn" data-act="finish" ${anyDone?'':'disabled'}>${doneCount === total ? 'Concluir treino' : anyDone ? `Concluir com ${doneCount} de ${total} exercícios` : 'Marque uma série para concluir'}</button>` + (S.day === todayKey() ? rvCard() : '');
   return h;
 }
 
@@ -719,8 +719,6 @@ function viewCalendar(){
     ss.forEach(s => { const mins = s.startedAt ? Math.max(1, Math.round((s.finishedAt - s.startedAt)/60000)) + ' min' : 'registro manual';
       h += `<div class="row"><span><span class="dot" style="--c:${TYPES[PLAN[s.day].type].c}"></span>${esc(PLAN[s.day].title)}</span><span>${s.sets ? s.sets + ' séries · ' : ''}${mins}</span></div>`; });
     if(f) h += `<div class="row"><span><span class="dot" style="--c:${TYPES.cardio.c}"></span>Futevôlei</span><span></span></div>`;
-    ss.forEach(s => { const ids = Object.keys(s.log || {}); if(ids.length) h += `<ul class="cal-ex">${ids.map(id => { const v = s.log[id], ex = ALLEX[id] || { name:id }; const w = Math.max(0, ...v.map(x => +x.w || 0)); return `<li><span>${esc(ex.name)}</span><span>${v.length} ${v.length === 1 ? 'série' : 'séries'}${w ? ' · ' + fmtNum(w) + ' kg' : ''}</span></li>`; }).join('')}</ul>`; });
-    if(ss.length && key <= today) h += rvCard(ss[ss.length - 1].day, key, true);
     if(!ss.length && !f) h += `<div class="row"><span>Nenhum check-in neste dia.</span></div>`;
     if(key <= today){
       h += `<div class="acts">`;
