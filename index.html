@@ -827,7 +827,13 @@ async function swPost(msg){
   }catch(e){}
   return false;
 }
-function scheduleRest(){ if(notifOk()) swPost({ type:'rest', end:TM.end, next:TM.next }); }
+function scheduleRest(){ if(notifOk()) swPost({ type:'rest', end:TM.end, total:TM.total, next:TM.next }); }
+// botões da notificação (+15 s / Pular) mexem no timer do app
+if(PWA) navigator.serviceWorker.addEventListener('message', e => {
+  const d = e.data || {};
+  if(d.type === 'rest-sync'){ TM.end = d.end; TM.total = Math.max(TM.total, d.total || 0); if(!TM.int) TM.int = setInterval(tick, 200); tick(); }
+  if(d.type === 'rest-skip'){ clearInterval(TM.int); TM.int = null; document.getElementById('timer').classList.remove('on','end','warn'); }
+});
 function cancelRest(){ swPost({ type:'rest-cancel' }); }
 function askNotifOnce(){
   try{
