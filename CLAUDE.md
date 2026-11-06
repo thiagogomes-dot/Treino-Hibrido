@@ -181,3 +181,10 @@ O plano fica na constante `PLAN` de `index.html` (um objeto por dia, com a lista
   últimos 7 dias → manter. Série incompleta → manter.
 - **Resumo da semana**: cartão "Esta semana" em Progresso (`weekCard`); o app manda o texto (`POST /summary`) ao
   abrir e ao concluir treino, e o Worker envia o push no domingo às 20h (hora local), só para celulares com lembretes ativos.
+
+## Trocar o treino de hoje (2026-11-05)
+
+- `todayPlan()` = treino de hoje: o do dia da semana, ou o escolhido em "🔁 Trocar treino" (`S.program.swap =
+  {date, day}`, vale só no dia). Lista mostra primeiro os treinos não feitos nesta semana. Em outro dia da barra:
+  "Fazer este treino hoje". `swapBar(day)` fica no topo do treino.
+- Na barra da semana, um treino conta como feito se foi feito em qualquer dia da semana (`weekDone`).

@@ -310,6 +310,17 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 .prs b{ display:block; font-size:15px; margin-bottom:2px; }
 .wk-sum .stats{ margin:10px 0 0; }
 .wk-sum .delta.up{ color:var(--ok); } .wk-sum .delta.down{ color:#e5484d; }
+/* trocar o treino de hoje */
+.swap{ display:flex; align-items:center; gap:8px; margin:10px 0 2px; font-size:13px; color:var(--muted); flex-wrap:wrap; }
+.swap > span{ flex:1; min-width:140px; }
+.swap b{ color:var(--text); }
+.swap .tbtn{ height:34px; }
+.swap-list{ display:grid; gap:6px; margin-top:10px; }
+.swap-list button{ display:flex; align-items:center; gap:10px; text-align:left; padding:10px 12px; border-radius:14px; border:1px solid var(--stroke2); background:color-mix(in srgb,var(--c) 10%,transparent); color:var(--text); }
+.swap-list i{ width:10px; height:10px; border-radius:50%; background:var(--c); flex-shrink:0; }
+.swap-list b{ display:block; font-size:14px; }
+.swap-list small{ color:var(--muted); font-size:12px; }
+.swap-list em{ font-style:normal; color:var(--c); font-weight:700; }
 /* avaliação do treino */
 .cal-ex{ list-style:none; margin:6px 0 2px; padding:0; font-size:12.5px; }
 .cal-ex li{ display:flex; justify-content:space-between; gap:10px; padding:4px 0; color:var(--muted); }
@@ -532,9 +543,9 @@ function weekState(){
   const mon = mondayOf(new Date());
   return DAYS.map((k, i) => {
     const date = ymd(addDays(mon, i));
-    const done = S.sessions.some(s => s.date === date && s.day === k);
+    const done = S.sessions.some(s => s.day === k && s.date >= ymd(mon) && s.date < ymd(addDays(mon, 7)));
     const dr = S.drafts[k];
-    const part = !done && dr && dr.date === date && Object.values(dr.log).some(a => a.some(x => x.done));
+    const part = !done && dr && dr.date === ymd() && Object.values(dr.log).some(a => a.some(x => x.done));
     return { k, done, part, today: date === ymd() };
   });
 }
@@ -615,17 +626,37 @@ function futCard(day){
     <div class="tx"><b>${on||auto ? 'Futevôlei registrado' : 'Treinou futevôlei?'}</b><span>${on||auto ? `Bolinha no calendário · ${when}` : `Marque para o calendário · ${when}`}</span></div>
     ${auto ? '' : `<button class="btn sm ${on?'ghost':''}" data-act="futtoggle" data-date="${date}">${on ? 'Desfazer' : 'Treinei'}</button>`}</section>`;
 }
+/* ---------- trocar o treino de hoje ----------
+   Por padrão o treino de hoje é o do dia da semana; dá para trocar por qualquer outro (ex.: repor o de ontem).
+   A troca vale só para hoje (S.program.swap = {date, day}). */
+const todayPlan = () => { const w = S.program && S.program.swap; return w && w.date === ymd() && PLAN[w.day] ? w.day : todayKey(); };
+const weekDone = k => { const m = mondayOf(new Date()); return S.sessions.some(s => s.day === k && s.date >= ymd(m) && s.date < ymd(addDays(m, 7))); };
+const planLabel = k => PLAN[k].tag || TYPES[PLAN[k].type].label;
+function swapBar(day){
+  const tp = todayPlan(), td = todayKey();
+  if(day !== tp) return PLAN[day].ex.length ? `<div class="swap"><span>${weekDone(day) ? '✓ Feito nesta semana' : DFULL[day]}</span><button class="tbtn" data-act="swap-to" data-day="${day}">Fazer este treino hoje</button></div>` : '';
+  const swapped = tp !== td;
+  let h = `<div class="swap"><span>${swapped ? `🔁 Hoje no lugar de <b>${esc(planLabel(td))}</b>` : 'Treino de hoje'}</span>${swapped ? '<button class="tbtn" data-act="swap-reset">Voltar</button>' : ''}<button class="tbtn" data-act="swap-open">${S.swapOpen ? 'Fechar' : '🔁 Trocar treino'}</button></div>`;
+  if(S.swapOpen){
+    const today = ymd();
+    const opts = DAYS.filter(k => PLAN[k].ex.length && k !== tp).map(k => ({ k, missed: dateOfDay(k) < today && !weekDone(k), done: weekDone(k) }))
+      .sort((a, b) => (b.missed - a.missed) || (a.done - b.done) || (DAYS.indexOf(a.k) - DAYS.indexOf(b.k)));
+    h += `<div class="swap-list">${opts.map(o => `<button data-act="swap-to" data-day="${o.k}" style="--c:${TYPES[PLAN[o.k].type].c}"><i></i><span><b>${esc(planLabel(o.k))} · ${esc(PLAN[o.k].title)}</b><small>${DFULL[o.k]}${o.missed ? ' · <em>não feito nesta semana</em>' : o.done ? ' · já feito nesta semana' : ''}</small></span></button>`).join('')}</div>`;
+  }
+  return h;
+}
+
 function viewTreino(){
   const day = S.day, plan = PLAN[day], T = TYPES[plan.type];
   const chips = `<div class="chips"><span class="chip" style="--c:${T.c}">${T.label}</span>${plan.futev ? `<span class="chip" style="--c:#4fe3c1">+ Futevôlei</span>` : ''}<span class="chip" style="--c:#a6a2bd">${DFULL[day]}</span></div>`;
   if(!plan.ex.length){
-    return `<section class="day-head glass">${chips}<h2>${plan.title}</h2><p>${plan.note}</p></section>${futCard(day)}
+    return `<section class="day-head glass">${chips}<h2>${plan.title}</h2>${swapBar(day)}<p>${plan.note}</p></section>${futCard(day)}
     <section class="card glass"><h3>Dia livre</h3><p class="hint">Se jogou futevôlei ou sentiu o joelho, registre a dor para acompanhar a evolução.</p><button class="btn ghost" data-act="tab" data-tab="joelho">Registrar dor do joelho</button></section>`;
   }
   const done = todaySession(day);
   if(done && !S.redo){
     const mins = done.startedAt ? Math.max(1, Math.round((done.finishedAt - done.startedAt)/60000)) : null;
-    return `<section class="day-head glass">${chips}<h2>${plan.title}</h2></section>
+    return `<section class="day-head glass">${chips}<h2>${plan.title}</h2>${swapBar(day)}</section>
     <section class="donecard glass"><div class="big">${ICON.check}</div><h2>Treino concluído</h2><p class="hint" style="color:var(--muted);margin:0">${DFULL[day]}, ${fmtDate(done.date)}</p>
       <div class="stats"><div class="stat"><b>${done.sets}</b><span>séries</span></div><div class="stat"><b>${fmtNum(done.volume)}</b><span>kg de volume</span></div><div class="stat"><b>${mins ? mins + 'min' : '—'}</b><span>duração</span></div></div>
       ${plan.futev ? `<button class="btn" data-act="tab" data-tab="joelho" style="margin-bottom:8px">Registrar dor pós-futevôlei</button>` : ''}
@@ -636,7 +667,7 @@ function viewTreino(){
   const curIdx = plan.ex.findIndex(e => !exDone(d, e));
   if(S.open[day] === undefined) S.open[day] = curIdx === -1 ? null : plan.ex[curIdx].id;
   const anyDone = Object.values(d.log).some(a => a.some(x => x.done));
-  let h = `<section class="day-head glass">${chips}<h2>${plan.title}</h2><p>${plan.note}</p>
+  let h = `<section class="day-head glass">${chips}<h2>${plan.title}</h2>${swapBar(day)}<p>${plan.note}</p>
     <div class="steps"><div class="steps-top"><b>${doneCount === total ? 'Tudo concluído' : `Etapa ${Math.min(doneCount+1,total)} de ${total}`}</b><span>${Math.round(doneCount/total*100)}%</span></div>
     <div class="segs">${plan.ex.map((e,i) => `<div class="seg ${exDone(d,e)?'on':''} ${i===curIdx?'cur':''}"></div>`).join('')}</div></div></section>${futCard(day)}`;
   plan.ex.forEach((ex, i) => {
@@ -668,7 +699,7 @@ function viewTreino(){
   h += `<section class="card glass" style="margin-top:14px"><h3>Joelho hoje</h3><p class="hint">Opcional. Ajuda a acompanhar o tendão ao longo do ciclo.</p>
     <div class="pain-val" style="--pc:${pv==null?'var(--dim)':painColor(pv)}"><b>${pv==null?'–':pv}</b><span>${pv==null?'Arraste para registrar':'de 10'}</span></div>
     <input type="range" min="0" max="10" step="1" value="${pv==null?0:pv}" data-k="pain" aria-label="Dor no joelho de 0 a 10"><div class="scale"><span>Sem dor</span><span>Dor forte</span></div></section>
-    <button class="btn" data-act="finish" ${anyDone?'':'disabled'}>${doneCount === total ? 'Concluir treino' : anyDone ? `Concluir com ${doneCount} de ${total} exercícios` : 'Marque uma série para concluir'}</button>` + (S.day === todayKey() ? rvCard() : '');
+    <button class="btn" data-act="finish" ${anyDone?'':'disabled'}>${doneCount === total ? 'Concluir treino' : anyDone ? `Concluir com ${doneCount} de ${total} exercícios` : 'Marque uma série para concluir'}</button>` + (S.day === todayPlan() ? rvCard() : '');
   return h;
 }
 
@@ -1065,6 +1096,9 @@ document.addEventListener('click', e => {
   else if(act === 'pushtest'){ pushTest(); }
   else if(act === 'rv-star'){ S.rvStars = +b.dataset.v; document.querySelectorAll('[data-act="rv-star"]').forEach(x => { const v = +x.dataset.v; x.classList.toggle('on', v <= S.rvStars); x.setAttribute('aria-checked', v === S.rvStars); }); const l = document.getElementById('rv-lbl'); if(l) l.textContent = ['','Ruim','Fraco','Ok','Bom','Ótimo'][S.rvStars]; }
   else if(act === 'sug-use'){ const id = b.dataset.ex, w = +b.dataset.w, d = draft(S.day); d.wt[id] = String(w).replace('.', ','); saveDrafts(); render(); toast('Carga sugerida aplicada'); }
+  else if(act === 'swap-open'){ S.swapOpen = !S.swapOpen; render(); }
+  else if(act === 'swap-to'){ const k = b.dataset.day; if(k === todayKey()) delete S.program.swap; else S.program.swap = { date:ymd(), day:k }; saveProgram(); S.day = k; S.swapOpen = false; S.open[k] = undefined; S.redo = false; render(); window.scrollTo({ top:0, behavior:'smooth' }); toast('Treino de hoje: ' + planLabel(k)); }
+  else if(act === 'swap-reset'){ delete S.program.swap; saveProgram(); S.day = todayKey(); S.swapOpen = false; render(); toast('Voltou para o treino do dia'); }
   else if(act === 'rv-send'){ rvSend(b.dataset.day || S.day, b.dataset.date || ymd()); }
   else if(act === 'rv-mic'){ micToggle(b); }
   else if(act === 'rv-again'){ S.rvAgain = b.dataset.date || ymd(); render(); }
@@ -1381,7 +1415,7 @@ function pushWeek(){
 function showIntro(){
   const el = document.getElementById('intro');
   if(location.hash){ el.classList.add('off'); return; } // aberto por notificação: vai direto
-  const ci = cycleInfo(), plan = PLAN[todayKey()];
+  const ci = cycleInfo(), plan = PLAN[todayPlan()];
   document.getElementById('introWk').textContent = (ci.notStarted ? 'Ciclo começa em breve' : `Semana ${ci.week} de ${ci.weeks}`) + ' · hoje: ' + (plan.type === 'rest' ? 'descanso' : TYPES[plan.type].label);
   const hide = () => el.classList.add('off');
   el.addEventListener('click', hide, { once:true });
@@ -1394,6 +1428,7 @@ function showIntro(){
   S.program = L.program || defaultProgram();
   seed31();
   S.pushOn = !!localStorage.getItem('treino-push-on');
+  S.day = todayPlan();
   cmLoad();
   S.drafts = L.drafts || {}; S.sessions = L.sessions || []; S.pain = L.pain || [];
   Object.keys(S.drafts).forEach(k => { if(!S.drafts[k] || S.drafts[k].date !== ymd()) delete S.drafts[k]; });
