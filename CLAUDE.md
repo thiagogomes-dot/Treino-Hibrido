@@ -187,4 +187,4 @@ O plano fica na constante `PLAN` de `index.html` (um objeto por dia, com a lista
 - `todayPlan()` = treino de hoje: o do dia da semana, ou o escolhido em "🔁 Trocar treino" (`S.program.swap =
   {date, day}`, vale só no dia). Lista mostra primeiro os treinos não feitos nesta semana. Em outro dia da barra:
   "Fazer este treino hoje". `swapBar(day)` fica no topo do treino.
-- Na barra da semana, um treino conta como feito se foi feito em qualquer dia da semana (`weekDone`).
+- Na barra da semana o treino fica marcado **no dia em que foi feito** (com a cor do treino feito); o dia trocado fica em branco (pedido do Thiago). `weekDone` só serve para a lista de troca ("não feito nesta semana").

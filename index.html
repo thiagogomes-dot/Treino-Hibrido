@@ -543,10 +543,11 @@ function weekState(){
   const mon = mondayOf(new Date());
   return DAYS.map((k, i) => {
     const date = ymd(addDays(mon, i));
-    const done = S.sessions.some(s => s.day === k && s.date >= ymd(mon) && s.date < ymd(addDays(mon, 7)));
-    const dr = S.drafts[k];
-    const part = !done && dr && dr.date === ymd() && Object.values(dr.log).some(a => a.some(x => x.done));
-    return { k, done, part, today: date === ymd() };
+    // marcado no dia em que treinou (mesmo que tenha trocado o treino); a cor é a do treino feito
+    const ds = S.sessions.filter(s => s.date === date), done = ds.length > 0, isToday = date === ymd();
+    const pk = isToday ? todayPlan() : k, dr = S.drafts[pk];
+    const part = !done && isToday && dr && dr.date === ymd() && Object.values(dr.log).some(a => a.some(x => x.done));
+    return { k, done, part, today: isToday, did: done ? ds[ds.length - 1].day : pk };
   });
 }
 
@@ -604,7 +605,7 @@ function render(){
   </section>`;
   if(S.tab === 'treino'){
     html += `<div class="week" role="tablist" aria-label="Dias da semana">` + weekState().map(w => {
-      const c = TYPES[PLAN[w.k].type].c, rest = w.k === 'dom';
+      const c = TYPES[PLAN[w.did || w.k].type].c, rest = w.k === 'dom';
       return `<button class="wd ${w.k===S.day?'sel':''} ${w.today?'today':''} ${w.done?'done':''} ${w.part?'part':''} ${rest?'off':''}" style="--c:${c}" data-act="day" data-day="${w.k}" role="tab" aria-selected="${w.k===S.day}" aria-label="${DFULL[w.k]}${w.done?', concluído':''}"><div class="l">${DLABEL[w.k]}</div>${hasFut(dateOfDay(w.k)) ? `<i class="fb">${BALL(13)}</i>` : ''}<div class="s">${w.done?ICON.check.replace('stroke-width="3"','stroke-width="3.5" width="12" height="12"'):''}</div></button>`;
     }).join('') + `</div>` + installCard() + cmCard() + spCard() + viewTreino();
   }
