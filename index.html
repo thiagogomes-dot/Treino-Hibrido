@@ -260,7 +260,7 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 .toast{ position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translate(-50%,-20px); opacity:0; z-index:50; padding:11px 16px; border-radius:16px; font-size:13.5px; font-weight:600; transition:all .3s; pointer-events:none; white-space:nowrap; }
 .toast.on{ transform:translate(-50%,0); opacity:1; }
 
-@media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; } #intro *{ animation:none !important; } }
 
 /* calendário estilo check-in */
 .cal-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
@@ -301,10 +301,26 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 .futcard .tx span{ font-size:12.5px; color:var(--muted); }
 .futcard .btn{ width:auto; flex-shrink:0; }
 .leg-ball{ display:inline-flex; vertical-align:middle; margin-right:6px; }
+/* tela de abertura */
+#intro{ position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; text-align:center;
+  background:radial-gradient(circle at 50% 38%,#2c2256 0%,#120d24 55%,#07060d 100%); transition:opacity .45s ease, visibility .45s ease; }
+#intro.off{ opacity:0; visibility:hidden; pointer-events:none; }
+#intro img{ width:172px; height:172px; border-radius:46px; box-shadow:0 0 70px -8px rgba(169,139,255,.75), inset 0 0 0 1px rgba(255,255,255,.12); animation:introPop .7s cubic-bezier(.2,.8,.2,1) both; }
+#intro h1{ font-family:var(--display); font-weight:800; font-size:38px; letter-spacing:-.02em; margin:8px 0 0; animation:introUp .6s .15s both; }
+#intro p{ margin:0; max-width:290px; color:var(--muted); font-size:15px; line-height:1.45; animation:introUp .6s .25s both; }
+#intro .chip{ margin-top:6px; font-size:13px; animation:introUp .6s .35s both; }
+@keyframes introPop{ from{ transform:scale(.7); opacity:0; } to{ transform:none; opacity:1; } }
+@keyframes introUp{ from{ transform:translateY(10px); opacity:0; } to{ transform:none; opacity:1; } }
 </style>
 </head>
 <body>
 <div class="bg" aria-hidden="true"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div><div class="grain"></div></div>
+<div id="intro" role="dialog" aria-label="Treino TH">
+  <img src="icons/icon-512.png" alt="">
+  <h1>Treino TH</h1>
+  <p>PPL 5x + futevôlei 2x, com o joelho protegido.</p>
+  <span class="chip" id="introWk" style="--c:#a98bff"></span>
+</div>
 <main id="app"></main>
 
 <div class="timer glass" id="timer" role="status" aria-live="polite">
@@ -1035,6 +1051,17 @@ document.addEventListener('change', e => {
   if((k === 'ram' || k === 'rpm') && t.value){ S.program.remind = Object.assign(remind(), { [k === 'ram' ? 'am' : 'pm']: t.value }); saveProgram(); if(S.pushOn) syncPush().then(() => toast('Horário salvo'), () => toast('Salvo no app; o servidor não respondeu')); else toast('Horário salvo'); }
 });
 
+/* ---------- tela de abertura: só quando o app abre do zero (não ao voltar de outro app) ---------- */
+function showIntro(){
+  const el = document.getElementById('intro');
+  if(location.hash){ el.classList.add('off'); return; } // aberto por notificação: vai direto
+  const ci = cycleInfo(), plan = PLAN[todayKey()];
+  document.getElementById('introWk').textContent = (ci.notStarted ? 'Ciclo começa em breve' : `Semana ${ci.week} de ${ci.weeks}`) + ' · hoje: ' + (plan.type === 'rest' ? 'descanso' : TYPES[plan.type].label);
+  const hide = () => el.classList.add('off');
+  el.addEventListener('click', hide, { once:true });
+  setTimeout(hide, 1700);
+}
+
 /* ---------- início ---------- */
 (function boot(){
   const L = lsLoad();
@@ -1045,6 +1072,7 @@ document.addEventListener('change', e => {
   Object.keys(S.drafts).forEach(k => { if(!S.drafts[k] || S.drafts[k].date !== ymd()) delete S.drafts[k]; });
   const h = location.hash.slice(1); if(['treino','progresso','joelho','guia'].includes(h)) S.tab = h;
   render();
+  showIntro();
   persistStorage();
   if(PWA) navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
 })();
