@@ -182,6 +182,35 @@ O plano fica na constante `PLAN` de `index.html` (um objeto por dia, com a lista
 - **Resumo da semana**: cartão "Esta semana" em Progresso (`weekCard`); o app manda o texto (`POST /summary`) ao
   abrir e ao concluir treino, e o Worker envia o push no domingo às 20h (hora local), só para celulares com lembretes ativos.
 
+## App para outras pessoas: cadastro e perfil (2026-11-23)
+
+Pedido do Thiago: mandar o mesmo link para um amigo, que faz o cadastro, manda o treino dele e o app se ajusta.
+- **Perfil** em `localStorage` `treino-perfil`. Sem perfil e com dados antigos = celular do Thiago (`{kind:'th'}`, tudo
+  como antes, `PLAN_TH`). Aparelho sem nada = cadastro (`#onb`). `?perfil=th` força o perfil do Thiago num aparelho novo
+  (ou "Restaurar um backup" na primeira tela).
+- Perfil `custom`: nome, objetivo, dor/lesão (opcional), esporte e dias (opcional), `workouts` (A, B, C… com dias da
+  semana). `buildPlan()` monta o `PLAN` da semana; cada treino vira um tipo `w0`, `w1`… com cor própria.
+- O app se ajusta: aba "Dor" só com lesão; cartão do esporte no lugar do futevôlei (emoji pelo nome); avatar com
+  iniciais; Guia gerado (`viewGuiaApp`); Spotify escondido; avaliações com `app:'livre'` (só a resposta da IA, sem a
+  revisão das 22h); ícone neutro (haltere) em `manifest-app.webmanifest` + `icons/app-*.png` (`icons/app-gerar.mjs`).
+- **Treino entra por**: foto (câmera), prints (até 6), arquivo (PDF, DOCX, XLSX/XLS/ODS/CSV, TXT), colar texto,
+  modelo pronto (ABC, Full body, Superior/Inferior) ou na mão. Depois, tela de conferência (editor) antes de salvar.
+- Leitura: `POST /plano` no Worker (foto → Llama 4 Scout transcreve, com Mistral Small 3.1 de reserva; texto → Llama
+  3.3 70B devolve JSON; 20 leituras/aparelho/dia). Se o servidor falhar ou sem internet: OCR Tesseract no celular +
+  leitor de texto próprio (`localParse`). Bibliotecas carregadas sob demanda (pdf.js, mammoth, SheetJS, Tesseract).
+- Ajustes de quem fez o cadastro: Editar treino, Trocar treino (ciclo novo), Meus dados. Todos: "Compartilhar".
+- Testado no navegador local em 2026-11-23 (cadastro, texto colado, foto pelo OCR, Excel, modelo, perfil do Thiago
+  intacto). **A IA do `/plano` só foi testada com IA simulada**: conferir depois de publicar o Worker.
+
+### Marca de amigo (`?treino=<chave>`, 2026-11-23)
+- `AMIGOS` no `index.html`: nome do app, pasta `amigos/<chave>/` (ícones, `manifest.webmanifest` com
+  `start_url ../../?amigo=<chave>`, `intro.mp4`). O link grava a chave em `localStorage` `treino-amigo` e o cadastro
+  guarda em `PF.brand`. Só vale para perfil `custom` (o celular do Thiago ignora).
+- Primeiro: **Mauricio Prado** (chave `mp`, link `?treino=mp`, pasta `amigos/mauricio/`; personal, https://mpradopersonal.com.br/): "Treino MP". O app inteiro usa as cores dele (`theme` em `AMIGOS`: fundo #111214, laranja de destaque, paleta laranja/areia nos treinos); a abertura termina em #111214, monograma MP do site, preto
+  #17191b, laranja #ff6a13, areia #e9e2d4. Ícone: `amigos/mauricio/_src/icone.py a|b|c` (opções em `_src/opcoes.png`).
+  Abertura em Remotion (3,5 s, 720×1280, 317 KB): projeto em `~/Videos/mauricio-intro` (node_modules = junção para o
+  template da skill `video-animado`); render `npx remotion render src/index.ts Intro out/intro.mp4 --codec=h264 --crf=26 --scale=0.6666666666666666`.
+
 ## Trocar o treino de hoje (2026-11-05)
 
 - `todayPlan()` = treino de hoje: o do dia da semana, ou o escolhido em "🔁 Trocar treino" (`S.program.swap =

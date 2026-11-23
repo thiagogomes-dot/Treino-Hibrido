@@ -1,6 +1,11 @@
-const CACHE = 'treinoth-v20';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon-32.png', 'icons/badge-96.png'];
-const ICON = 'icons/icon-192.png', BADGE = 'icons/badge-96.png';
+const CACHE = 'treinoth-v23';
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon-32.png', 'icons/badge-96.png', 'manifest-app.webmanifest', 'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable-512.png', 'icons/app-apple-touch.png'];
+const BADGE = 'icons/badge-96.png';
+let ICON = 'icons/icon-192.png';
+// perfil gravado pela página (quem fez o cadastro não é o Thiago: outro ícone e outros textos)
+async function profile(){
+  try{ const c = await caches.open('treino-state'); const m = await c.match('/profile'); const p = m ? await m.json() : null; ICON = p && p.icon ? p.icon : p && !p.th ? 'icons/app-192.png' : 'icons/icon-192.png'; return p || { th:true }; }catch(_){ return { th:true }; }
+}
 
 // cada arquivo entra no cache sozinho: um 404 não derruba mais a instalação do service worker
 self.addEventListener('install', e => {
@@ -43,6 +48,7 @@ async function showCountdown(left){
   });
 }
 async function runRest(gen){
+  await profile();
   let shown = false;
   while(gen === restGen && rest){
     const left = Math.ceil((rest.end - Date.now()) / 1000);
@@ -80,12 +86,13 @@ self.addEventListener('push', e => {
   e.waitUntil((async () => {
     let trained = false;
     try{ const c = await caches.open('treino-state'); const m = await c.match('/last-session'); trained = m && (await m.text()) === today(); }catch(_){}
+    const pf = await profile();
     let title, body;
     if(data.title){ title = data.title; body = data.body || ''; }
-    else if(data.slot === 'noite' && trained){ title = 'Treino de hoje feito ✅'; body = 'Como ficou o joelho? Registra a dor de 0 a 10.'; }
+    else if(data.slot === 'noite' && trained){ title = 'Treino de hoje feito ✅'; body = pf.th ? 'Como ficou o joelho? Registra a dor de 0 a 10.' : pf.injury ? 'Como está a dor (' + pf.injury + ')? Registra de 0 a 10.' : 'Mandou bem. Descansa e dorme bem hoje 😴'; }
     else if(data.slot === 'noite'){ title = 'Ainda dá tempo de treinar'; body = 'Seu treino de hoje está te esperando 💪'; }
-    else { title = 'Bom dia, hora do treino'; body = 'Abre o Treino TH e começa pela primeira série 💪'; }
-    const url = data.url || (data.slot === 'noite' && trained ? './#joelho' : './#treino');
+    else { title = 'Bom dia' + (pf.name ? ', ' + pf.name : '') + ', hora do treino'; body = 'Abre o ' + (pf.app || 'Treino TH') + ' e começa pela primeira série 💪'; }
+    const url = data.url || (data.slot === 'noite' && trained && (pf.th || pf.injury) ? './#joelho' : './#treino');
     await self.registration.showNotification(title, { body, icon:ICON, badge:BADGE, tag:'lembrete', vibrate:[200,100,200], data:{ url } });
   })());
 });

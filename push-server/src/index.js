@@ -10,6 +10,9 @@
 // - POST /notes   {uid}                               → comentários desse aparelho, com as respostas
 // - POST /approve {uid, id}                           → ela aprova a mudança sugerida
 // - /admin/* (com ADMIN_TOKEN, usado pela revisão diária do Claude): notes, reply, applied
+// Cadastro de outras pessoas no app (perfil "livre"):
+// - POST /plano {uid, text?, images?[]} → a IA grátis lê a ficha (foto/print/PDF escaneado → transcrição; texto → estrutura)
+//   e devolve {workouts:[{name, focus, days[], ex:[{name, sets, reps, rest, obs, uncertain}]}]}. 20 leituras por aparelho por dia.
 // Cada lista fica numa chave só do KV, para caber folgado nos limites grátis.
 import { sendPush } from './webpush.js';
 
@@ -18,6 +21,7 @@ const ALLOWED = ['https://thiagogomes-dot.github.io', 'http://localhost:8790', '
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const UID = /^[a-z0-9]{12,40}$/;
 const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const VISION_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct', '@cf/mistralai/mistral-small-3.1-24b-instruct'];
 
 function cors(req){
   const o = req.headers.get('Origin') || '';
@@ -56,17 +60,68 @@ com tendinopatia patelar nos dois joelhos e foco em estética. Regras do treino 
 extensão excêntrica declinada é inegociável (descida de 4 a 5 s), sobrecarga progressiva a cada 2 semanas, semana ruim = alivia o Legs mas mantém o excêntrico,
 proteína de 1,8 a 2 g/kg, sono de 7 a 8 h. Ele acabou de avaliar o treino do dia e pode ter deixado comentários ou dúvidas.\n` + AI_COMMON
 };
+const AI_LIVRE = `Você é o treinador virtual de um app de treino de musculação. A pessoa fez o cadastro no app com o próprio treino.
+Use o perfil dela (objetivo, dor ou lesão, esporte) para responder. Ela acabou de avaliar o treino do dia e pode ter deixado comentários ou dúvidas.
+Se sugerir mudança no treino, lembre que mudanças grandes devem ser combinadas com o professor dela, se ela tiver um.\n` + AI_COMMON;
 async function aiReply(env, n){
   if(!env.AI) return null;
   const c = n.ctx || {};
   const user = `Treino avaliado: ${n.exName}. Nota: ${n.rating ? n.rating + ' de 5 estrelas' : 'sem nota'}.
 Exercícios do treino: ${c.series || '-'}. Feito hoje: ${c.load || '-'}.
-${c.phase ? 'Fase do ciclo: ' + c.phase + '. ' : ''}Última dor registrada (0 a 10): ${c.pain ?? '-'}.
+${c.perfil ? 'Perfil: ' + c.perfil + '.\n' : ''}${c.phase ? 'Fase do ciclo: ' + c.phase + '. ' : ''}Última dor registrada (0 a 10): ${c.pain ?? '-'}.
 Comentários e dúvidas dela: "${n.text || '(sem comentário)'}"`;
   try{
-    const r = await env.AI.run(AI_MODEL, { messages:[{ role:'system', content:AI_SYSTEM[n.app] || AI_SYSTEM.kika }, { role:'user', content:user }], max_tokens:260, temperature:.4 });
+    const r = await env.AI.run(AI_MODEL, { messages:[{ role:'system', content: n.app === 'livre' ? AI_LIVRE : (AI_SYSTEM[n.app] || AI_SYSTEM.kika) }, { role:'user', content:user }], max_tokens:260, temperature:.4 });
     return clip(r && (r.response || r.result || ''), 900).trim() || null;
   }catch(_){ return null; }
+}
+
+// ---- leitura da ficha de treino (cadastro de outras pessoas)
+const VISION_PROMPT = `Esta imagem é uma ficha ou planilha de treino de academia (papel, print de app, PDF ou foto de tela).
+Transcreva TODO o conteúdo de treino, linha por linha, exatamente como está escrito: nomes dos treinos (A, B, C, dias da semana, grupos musculares),
+exercícios, séries, repetições, carga, descanso e observações. Mantenha a ordem. Não invente nada, não resuma e não comente.
+Se uma parte estiver ilegível, escreva [ilegível]. Responda só com a transcrição em texto simples.`;
+async function visionRead(env, dataUrl){
+  for(const model of VISION_MODELS){
+    try{
+      const r = await env.AI.run(model, { messages:[{ role:'user', content:[{ type:'text', text:VISION_PROMPT }, { type:'image_url', image_url:{ url:dataUrl } }] }], max_tokens:2500, temperature:0 });
+      const t = String((r && (r.response || r.result)) || '').trim();
+      if(t.length > 5) return t;
+    }catch(_){}
+  }
+  return '';
+}
+const PLAN_PROMPT = `Você recebe o texto de uma ficha de treino de musculação em português (pode vir de foto transcrita, PDF, planilha ou WhatsApp, com erros de digitação).
+Organize em JSON, sem inventar exercícios. Formato exato:
+{"workouts":[{"name":"Treino A","focus":"Peito e tríceps","days":["seg"],"ex":[{"name":"Supino reto com barra","sets":4,"reps":"8–10","rest":90,"obs":"","uncertain":""}]}]}
+Regras:
+- Um item em "workouts" para cada treino ou divisão (A, B, C…, ou cada dia da semana). Sem divisão, um só treino "Treino A".
+- "name": curto ("Treino A", "Treino B"…; se a ficha usa só dias da semana, use "Treino A", "Treino B" na ordem). "focus": grupos musculares ou título do treino, se houver.
+- "days": só se a ficha disser os dias da semana; use "seg","ter","qua","qui","sex","sab","dom". Caso contrário, [].
+- "sets": número inteiro de séries. "reps": as repetições como estão ("12", "10–12", "15/12/10", "até a falha", "30 s", "5 min").
+- "rest": descanso em segundos (número). Se a ficha não disser, 60.
+- "obs": observação curta do exercício (técnica, cadência, bi-set, drop-set, carga), ou "".
+- Corrija erros óbvios de digitação ou de leitura no nome do exercício (ex.: "Sup1no" → "Supino"). Nomes em português, primeira letra maiúscula.
+- "uncertain": se séries, repetições ou o nome estiverem ilegíveis ou ausentes, diga o que conferir (ex.: "séries não informadas"); senão "".
+- Aquecimento e cardio entram como exercícios (ex.: "Esteira", sets 1, reps "10 min").
+Responda APENAS com o JSON.`;
+function pickJson(r){
+  if(r && typeof r.response === 'object' && r.response) return r.response;
+  const t = String((r && (r.response || r.result)) || '');
+  const a = t.indexOf('{'), z = t.lastIndexOf('}');
+  if(a < 0 || z <= a) return null;
+  try{ return JSON.parse(t.slice(a, z + 1)); }catch(_){ return null; }
+}
+async function structurePlan(env, text){
+  const messages = [{ role:'system', content:PLAN_PROMPT }, { role:'user', content:text.slice(0, 20000) }];
+  let j = null;
+  try{ j = pickJson(await env.AI.run(AI_MODEL, { messages, max_tokens:4096, temperature:0, response_format:{ type:'json_object' } })); }catch(_){}
+  if(!j || !Array.isArray(j.workouts)){ try{ j = pickJson(await env.AI.run(AI_MODEL, { messages, max_tokens:4096, temperature:0 })); }catch(_){} }
+  if(!j || !Array.isArray(j.workouts)) return null;
+  const s = v => clip(v, 80).trim();
+  return j.workouts.slice(0, 7).map(w => ({ name:s(w.name), focus:s(w.focus), days:(Array.isArray(w.days) ? w.days : []).map(d => clip(d, 3)).slice(0, 7),
+    ex:(Array.isArray(w.ex) ? w.ex : []).slice(0, 25).map(e => ({ name:s(e.name), sets:parseInt(e.sets, 10) || 0, reps:clip(e.reps, 24), rest:parseInt(e.rest, 10) || 60, obs:clip(e.obs, 160), uncertain:clip(e.uncertain, 80) })).filter(e => e.name) }))
+    .filter(w => w.ex.length);
 }
 
 async function pushTo(env, filter, data){
@@ -156,8 +211,8 @@ export default {
       const list = await loadNotes(env, b.uid), today = new Date().toISOString().slice(0, 10);
       if(list.filter(x => x.date === today).length >= 25) return json(req, { error:'limite de comentários do dia' }, 429);
       const n = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts:Date.now(), date:clip(b.date, 10) || today,
-        app: b.app === 'th' ? 'th' : 'kika', ex:clip(b.ex, 60), exName:clip(b.exName, 120), text, rating, tags:(b.tags || []).slice(0, 8).map(t => clip(t, 30)),
-        ctx:{ series:clip(b.ctx && b.ctx.series, 600), obs:clip(b.ctx && b.ctx.obs, 300), load:clip(b.ctx && b.ctx.load, 300), phase:clip(b.ctx && b.ctx.phase, 40), pain: b.ctx && Number.isFinite(b.ctx.pain) ? b.ctx.pain : null, day:clip(b.ctx && b.ctx.day, 40) },
+        app: ['th', 'livre'].includes(b.app) ? b.app : 'kika', ex:clip(b.ex, 60), exName:clip(b.exName, 120), text, rating, tags:(b.tags || []).slice(0, 8).map(t => clip(t, 30)),
+        ctx:{ perfil:clip(b.ctx && b.ctx.perfil, 300), series:clip(b.ctx && b.ctx.series, 600), obs:clip(b.ctx && b.ctx.obs, 300), load:clip(b.ctx && b.ctx.load, 300), phase:clip(b.ctx && b.ctx.phase, 40), pain: b.ctx && Number.isFinite(b.ctx.pain) ? b.ctx.pain : null, day:clip(b.ctx && b.ctx.day, 40) },
         ai:null, claude:null, change:null };
       const ai = await aiReply(env, n);
       if(ai) n.ai = { text:ai, ts:Date.now() };
@@ -165,6 +220,24 @@ export default {
       const index = (await env.SUBS.get('notes-index', 'json')) || [];
       if(!index.some(x => x.uid === b.uid)){ index.push({ uid:b.uid, app:n.app, since:Date.now() }); await env.SUBS.put('notes-index', JSON.stringify(index)); }
       return json(req, { ok:true, note:n });
+    }
+    if(url.pathname === '/plano'){
+      if(!UID.test(b.uid || '')) return json(req, { error:'aparelho inválido' }, 400);
+      if(!env.AI) return json(req, { error:'IA indisponível' }, 503);
+      const today = new Date().toISOString().slice(0, 10), lk = 'plano:' + b.uid + ':' + today;
+      const used = +(await env.SUBS.get(lk) || 0);
+      if(used >= 20) return json(req, { error:'limite de leituras do dia' }, 429);
+      await env.SUBS.put(lk, String(used + 1), { expirationTtl: 172800 });
+      const images = (Array.isArray(b.images) ? b.images : []).filter(x => typeof x === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(x) && x.length < 3000000).slice(0, 6);
+      let text = clip(b.text, 15000);
+      for(let i = 0; i < images.length; i++){
+        const t = await visionRead(env, images[i]);
+        if(t) text += `\n\n[foto ${i + 1}]\n` + t;
+      }
+      if(!text.trim()) return json(req, { error:'não consegui ler a imagem' }, 422);
+      const workouts = await structurePlan(env, text);
+      if(!workouts || !workouts.length) return json(req, { error:'não consegui organizar o treino' }, 422);
+      return json(req, { ok:true, workouts, chars:text.length });
     }
     if(url.pathname === '/notes'){
       if(!UID.test(b.uid || '')) return json(req, { error:'aparelho inválido' }, 400);
