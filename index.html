@@ -244,7 +244,7 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 /* ajustes */
 .sheet{ position:fixed; inset:0; z-index:40; display:none; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 .sheet.on{ display:flex; }
-.sheet .panel{ width:100%; max-width:520px; padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:28px 28px 0 0; background:linear-gradient(160deg,rgba(32,28,52,.92),rgba(14,12,24,.96)); }
+.sheet .panel{ width:100%; max-width:520px; padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px)); border-radius:28px 28px 0 0; background:linear-gradient(160deg,var(--panel-a,rgba(32,28,52,.92)),var(--panel-b,rgba(14,12,24,.96))); }
 .sheet h3{ font-family:var(--display); font-size:22px; margin:0 0 16px; }
 .field{ margin-bottom:16px; }
 .sheet .panel{ max-height:88vh; overflow-y:auto; }
@@ -379,7 +379,7 @@ nav.tabs{ position:fixed; left:0; right:0; bottom:0; z-index:21; padding:8px 12p
 #onb.on{ display:block; }
 #onb .in{ max-width:520px; margin:0 auto; padding:calc(22px + env(safe-area-inset-top,0px)) 16px calc(120px + env(safe-area-inset-bottom,0px)); }
 #onb .hero{ text-align:center; margin:18px 0 22px; }
-#onb .hero img{ width:96px; height:96px; border-radius:28px; box-shadow:0 0 50px -8px rgba(169,139,255,.7); }
+#onb .hero img{ width:96px; height:96px; border-radius:28px; box-shadow:0 0 50px -8px color-mix(in srgb,var(--acc) 70%,transparent); }
 #onb h1{ font-family:var(--display); font-weight:800; font-size:30px; line-height:1.1; letter-spacing:-.02em; margin:14px 0 8px; }
 #onb h2{ font-family:var(--display); font-weight:800; font-size:24px; letter-spacing:-.015em; margin:4px 0 6px; }
 #onb .lead{ color:var(--muted); font-size:14.5px; margin:0 auto; max-width:380px; }
@@ -556,6 +556,7 @@ function applyTheme(){
   const T = branded() && BR.theme, r = document.documentElement.style;
   ['bg','text','muted','dim','acc'].forEach(k => T ? r.setProperty('--' + k, T[k]) : r.removeProperty('--' + k));
   T ? (r.setProperty('--orb-b', T.orbB), r.setProperty('--orb-c', T.orbC)) : (r.removeProperty('--orb-b'), r.removeProperty('--orb-c'));
+  T ? (r.setProperty('--panel-a', 'rgba(36,34,32,.96)'), r.setProperty('--panel-b', 'rgba(17,18,20,.98)')) : (r.removeProperty('--panel-a'), r.removeProperty('--panel-b'));
   document.querySelector('meta[name="theme-color"]').setAttribute('content', T ? T.bg : '#07060d');
   ['push','pull','legs','cardio'].forEach((k, i) => { TYPES[k].c = T ? [T.acc, T.colors[1], T.acc, T.colors[1]][i] : BASE_TYPES[k].c; });
 }
@@ -570,7 +571,7 @@ const hasInjury = () => isTH() || !!(PF.injury || '').trim();
 const injuryName = () => isTH() ? 'joelho' : PF.injury.trim();
 const hasSport = () => isTH() || !!(PF.sport || '').trim();
 const sportName = () => isTH() ? 'Futevôlei' : PF.sport.trim().replace(/^./, c => c.toUpperCase());
-const SPORT_EMOJI = [[/fut(e|ebol)|soccer|society|fut ?sal/,'⚽'],[/corr|run|maratona/,'🏃'],[/nata|swim|piscina/,'🏊'],[/t[eê]nis|beach|padel|squash/,'🎾'],[/v[oô]lei/,'🏐'],[/bike|ciclis|pedal|mtb/,'🚴'],[/jiu|luta|muay|boxe|judo|jud[oô]|mma|karat/,'🥋'],[/basque/,'🏀'],[/surf/,'🏄'],[/yoga|pilates/,'🧘'],[/escal/,'🧗'],[/crossfit|cross/,'🏋️']];
+const SPORT_EMOJI = [[/fute?v[oô]lei|v[oô]lei/,'🏐'],[/fut(ebol)?|futebol|soccer|society|fut ?sal/,'⚽'],[/corr|run|maratona/,'🏃'],[/nata|swim|piscina/,'🏊'],[/t[eê]nis|beach|padel|squash/,'🎾'],[/bike|ciclis|pedal|mtb/,'🚴'],[/jiu|luta|muay|boxe|judo|jud[oô]|mma|karat/,'🥋'],[/basque/,'🏀'],[/surf/,'🏄'],[/yoga|pilates/,'🧘'],[/escal/,'🧗'],[/crossfit|cross/,'🏋️']];
 function sportIcon(sz){
   if(isTH()) return BALL(sz);
   const n = (PF.sport || '').toLowerCase(), e = (SPORT_EMOJI.find(([r]) => r.test(n)) || [0,'🏅'])[1];

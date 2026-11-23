@@ -1,4 +1,4 @@
-const CACHE = 'treinoth-v23';
+const CACHE = 'treinoth-v24';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon-32.png', 'icons/badge-96.png', 'manifest-app.webmanifest', 'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable-512.png', 'icons/app-apple-touch.png'];
 const BADGE = 'icons/badge-96.png';
 let ICON = 'icons/icon-192.png';
