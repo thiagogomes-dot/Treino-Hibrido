@@ -217,3 +217,10 @@ Pedido do Thiago: mandar o mesmo link para um amigo, que faz o cadastro, manda o
   {date, day}`, vale só no dia). Lista mostra primeiro os treinos não feitos nesta semana. Em outro dia da barra:
   "Fazer este treino hoje". `swapBar(day)` fica no topo do treino.
 - Na barra da semana o treino fica marcado **no dia em que foi feito** (com a cor do treino feito); o dia trocado fica em branco (pedido do Thiago). `weekDone` só serve para a lista de troca ("não feito nesta semana").
+
+## GIFs de execução (2026-11-26)
+- Só no Treino TH (`isTH()`): `GIFS` em index.html liga o id do exercício ao id do ExerciseDB (API grátis `oss.exercisedb.dev`, GIF 180 px em `static.exercisedb.dev/media/<id>.gif`). 29 de 30 exercícios; `excentrico` fica sem (só YouTube).
+- Cada GIF foi conferido quadro a quadro: o nome em inglês erra (ex.: "cable lat pulldown full range of motion" é um crossover). Exercício novo = conferir antes de pôr no mapa.
+- Cartão aberto mostra o GIF; tocar amplia (`.gifbig`). Os GIFs do treino do dia já carregam ao abrir a tela (img em `display:none` também baixa).
+- sw.js guarda os GIFs no cache `treino-gifs` (não é apagado na troca de versão). Se o servidor cair, a imagem some sozinha (`onerror`) e fica só o YouTube.
+- Licença dos GIFs não confirmada (termos do ExerciseDB não abriram). Por isso não vai para perfis de amigos (Treino MP) por enquanto.

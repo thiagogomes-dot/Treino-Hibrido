@@ -115,6 +115,10 @@ main{ max-width:520px; margin:0 auto; padding:18px 16px 190px; }
 .ex.open .chev{ transform:rotate(180deg); }
 .ex-b{ padding:0 16px 16px; display:none; }
 .ex.open .ex-b{ display:block; }
+.exgif{ display:block; width:100%; max-width:220px; margin:0 auto 12px; padding:0; border:0; border-radius:14px; overflow:hidden; background:#fff; cursor:zoom-in; aspect-ratio:1/1; }
+.exgif img{ display:block; width:100%; height:100%; object-fit:contain; }
+.gifbig{ position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.82); display:grid; place-items:center; padding:24px; cursor:zoom-out; }
+.gifbig img{ width:min(92vw, 520px); aspect-ratio:1/1; object-fit:contain; background:#fff; border-radius:18px; image-rendering:auto; }
 .obs{ font-size:13px; color:var(--muted); margin:0 0 10px; }
 .last{ font-size:12.5px; color:var(--text); background:rgba(255,255,255,.05); border:1px solid var(--stroke); border-radius:12px; padding:8px 11px; margin-bottom:10px; }
 .last em{ font-style:normal; color:var(--acc); font-weight:700; }
@@ -462,6 +466,10 @@ textarea.inp{ height:auto; min-height:150px; padding:12px 14px; resize:vertical;
 const TYPES = { push:{c:'#ffb86b',label:'Push'}, pull:{c:'#a98bff',label:'Pull'}, legs:{c:'#ff6f91',label:'Legs'}, cardio:{c:'#4fe3c1',label:'Cardio'}, rest:{c:'#7d7a95',label:'Descanso'} };
 const YT = id => 'https://www.youtube.com/watch?v=' + id;
 // vídeo de execução: o do plano, ou uma busca no YouTube pelo nome do exercício (treinos de outras pessoas)
+/* GIFs de execução (ExerciseDB, API grátis), só no Treino TH. Cada um conferido quadro a quadro (2026-11-26).
+   O GIF vem do servidor deles e o service worker guarda uma cópia para usar offline. Sem GIF: fica só o YouTube. */
+const GIFS = {'supino-reto':'EIeI8Vf', 'supino-incl-halter':'ns0SIbU', 'desenv-halter':'znQUdHY', 'elev-lateral':'DsgkuIt', 'crucifixo':'yz9nUhF', 'triceps-corda':'dU605di', 'triceps-testa':'h8LFzo9', 'puxada-frontal':'RVwzP10', 'remada-curvada':'eZyBC3j', 'remada-unilateral':'C0MA9bC', 'pullover':'9XjtHvS', 'face-pull':'ZfyAGhK', 'rosca-direta':'6TG6x2w', 'rosca-martelo':'2NpxjC1', 'leg-press':'10Z2DXU', 'goblet':'yn8yg1r', 'extensora':'my33uHU', 'flexora':'17lJ1kr', 'hip-thrust':'qg2PGl6', 'abducao':'CHpahtl', 'supino-incl-barra':'3TZduzM', 'supino-reto-halter':'SpYC0Kp', 'arnold':'Xy4jlWA', 'elev-frontal':'3eGE2JC', 'crossover':'0CXGHya', 'triceps-frances':'kont8Ut', 'puxada-pronada':'qdRxqCj', 'puxada-supinada':'xBYcQHj', 'remada-cavalinho':'aaXr7ld', 'rosca-concentrada':'gvsWLQw'};
+const exGif = ex => isTH() && GIFS[ex.id] ? 'https://static.exercisedb.dev/media/' + GIFS[ex.id] + '.gif' : null;
 const exVideo = ex => ex.yt ? YT(ex.yt) : 'https://www.youtube.com/results?search_query=' + encodeURIComponent(ex.name + ' execução');
 // plano do Thiago (perfil "th"). Quem faz o cadastro tem o próprio plano, montado em buildPlan().
 const PLAN_TH = {
@@ -851,6 +859,7 @@ function viewTreino(){
         <span class="chev">▼</span>
       </button>
       <div class="ex-b">
+        ${exGif(ex) ? `<button class="exgif" data-act="gif" data-src="${exGif(ex)}" aria-label="Ampliar a animação do exercício"><img src="${exGif(ex)}" alt="Animação: ${esc(ex.name)}" onerror="this.parentNode.remove()"></button>` : ''}
         ${ex.obs ? `<p class="obs">${esc(ex.obs)}</p>` : ''}
         ${best ? `<div class="last">Última vez: <em>${best.w ? fmtNum(best.w) + ' kg × ' : ''}${best.r} reps</em></div>` : ''}
         ${sugHtml(ex, d)}
@@ -1248,6 +1257,7 @@ document.addEventListener('click', e => {
   const act = b.dataset.act;
   if(act === 'day'){ S.day = b.dataset.day; S.redo = false; render(); }
   else if(act === 'tab'){ S.tab = b.dataset.tab; render(); window.scrollTo({top:0}); }
+  else if(act === 'gif'){ const o = document.createElement('div'); o.className = 'gifbig'; o.innerHTML = `<img src="${b.dataset.src}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); }
   else if(act === 'open'){ S.open[S.day] = S.open[S.day] === b.dataset.ex ? null : b.dataset.ex; render(); }
   else if(act === 'nextset' || act === 'undoset'){
     unlockAudio();

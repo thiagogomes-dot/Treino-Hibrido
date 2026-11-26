@@ -1,4 +1,4 @@
-const CACHE = 'treinoth-v24';
+const CACHE = 'treinoth-v25';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/favicon-32.png', 'icons/badge-96.png', 'manifest-app.webmanifest', 'icons/app-192.png', 'icons/app-512.png', 'icons/app-maskable-512.png', 'icons/app-apple-touch.png'];
 const BADGE = 'icons/badge-96.png';
 let ICON = 'icons/icon-192.png';
@@ -21,6 +21,9 @@ self.addEventListener('fetch', e => {
     // rede primeiro (pega atualizações), cache se offline
     e.respondWith(fetch(r).then(res => { if(res.ok){ const c = res.clone(); caches.open(CACHE).then(k => k.put(r, c)); } return res; })
       .catch(() => caches.match(r, { ignoreSearch:true }).then(m => m || caches.match('index.html'))));
+  } else if(u.host === 'static.exercisedb.dev'){
+    // GIFs de execução: cache próprio (não some quando a versão do app muda), cópia guardada na primeira vez
+    e.respondWith(caches.open('treino-gifs').then(k => k.match(r).then(m => m || fetch(r).then(res => { if(res.ok || res.type === 'opaque') k.put(r, res.clone()); return res; }))));
   } else if(/fonts\.(googleapis|gstatic)\.com/.test(u.host)){
     e.respondWith(caches.match(r).then(m => m || fetch(r).then(res => { const c = res.clone(); caches.open(CACHE).then(k => k.put(r, c)); return res; })));
   }
