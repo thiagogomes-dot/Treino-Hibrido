@@ -104,6 +104,40 @@ main{ max-width:520px; margin:0 auto; padding:18px 16px 190px; }
 .seg.cur{ background:color-mix(in srgb,var(--acc) 35%,transparent); }
 
 .ex{ margin-bottom:10px; overflow:hidden; border-radius:22px; }
+.exlist{ display:flex; flex-direction:column; gap:7px; margin-bottom:12px; }
+.exr{ width:100%; display:flex; align-items:center; gap:11px; padding:7px 12px 7px 7px; border-radius:18px; text-align:left; cursor:pointer; color:inherit; font:inherit; }
+.exr.cur{ border-color:color-mix(in srgb,var(--acc) 45%,transparent); }
+.exr .ex-st{ width:44px; height:44px; border-radius:12px; }
+.exr.complete .ex-st{ background:var(--acc); border-color:var(--acc); color:#0b0a12; }
+.exr-g{ position:relative; width:44px; height:44px; flex-shrink:0; border-radius:12px; overflow:hidden; background:#fff; }
+.exr-g img{ width:100%; height:100%; object-fit:contain; display:block; }
+.exr-g i{ position:absolute; inset:0; display:grid; place-items:center; background:color-mix(in srgb,var(--acc) 78%,transparent); color:#0b0a12; }
+.exr-g i svg{ width:20px; height:20px; }
+.exr-t{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.exr-t b{ font-weight:600; font-size:14.5px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.exr-t small{ font-size:12px; color:var(--muted); }
+.exr.complete .exr-t b{ color:var(--muted); }
+.exr-d{ display:flex; gap:3px; flex-shrink:0; }
+.exr-d i{ width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.14); }
+.exr-d i.on{ background:var(--acc); box-shadow:0 0 8px var(--acc); }
+.exs{ position:fixed; inset:0; z-index:30; display:flex; align-items:flex-end; justify-content:center; }
+.exs-bd{ position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.exs-p{ position:relative; width:100%; max-width:520px; max-height:88vh; overflow-y:auto; overscroll-behavior:contain; padding:10px 16px calc(16px + env(safe-area-inset-bottom,0px)); border-radius:26px 26px 0 0; border-top:1px solid var(--stroke2); background:linear-gradient(160deg,var(--panel-a,rgba(32,28,52,.97)),var(--panel-b,rgba(14,12,24,.99))); }
+.exs.anim .exs-bd{ animation:exsF .22s ease both; }
+.exs.anim .exs-p{ animation:exsUp .3s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes exsUp{ from{ transform:translateY(100%); } }
+@keyframes exsF{ from{ opacity:0; } }
+.exs-grab{ width:38px; height:4px; border-radius:9px; background:var(--stroke2); margin:0 auto 10px; }
+.exs-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px; }
+.exs-top b{ font-family:var(--display); font-size:19px; font-weight:700; line-height:1.2; display:block; }
+.exs-top small{ color:var(--muted); font-size:12.5px; }
+.exs-x{ width:32px; height:32px; flex-shrink:0; border:0; border-radius:50%; background:rgba(255,255,255,.08); color:var(--muted); font-size:14px; cursor:pointer; }
+.exs-nav{ display:flex; gap:8px; margin-top:12px; }
+.exs-nav button{ flex:1; padding:10px; border-radius:13px; border:1px solid var(--stroke2); background:none; color:var(--muted); font:600 13px var(--body); cursor:pointer; }
+.exs-nav button[disabled]{ opacity:.35; cursor:default; }
+body.exs-open{ overflow:hidden; }
+body.exs-open .timer{ top:calc(12px + env(safe-area-inset-top,0px)); bottom:auto; z-index:31; background:linear-gradient(160deg,var(--panel-a,rgba(36,30,58,.98)),var(--panel-b,rgba(16,13,28,.99))); }
+@media (prefers-reduced-motion: reduce){ .exs.anim .exs-p, .exs.anim .exs-bd{ animation:none; } }
 .ex-h{ width:100%; display:flex; gap:12px; align-items:center; padding:15px 16px; border:0; background:none; text-align:left; }
 .ex-st{ width:30px; height:30px; flex-shrink:0; border-radius:50%; border:1.5px solid var(--stroke2); display:grid; place-items:center; font-size:12px; font-weight:700; color:var(--muted); transition:all .25s; }
 .ex.complete .ex-st{ background:var(--acc); border-color:var(--acc); color:#0b0a12; box-shadow:0 0 14px var(--acc); }
@@ -786,6 +820,7 @@ function render(){
   if(S.tab === 'progresso') html += viewProgresso(ci);
   if(S.tab === 'joelho') html += viewJoelho();
   if(S.tab === 'guia') html += viewGuia();
+  if(S.tab !== 'treino') document.body.classList.remove('exs-open');
   $app.innerHTML = html;
   renderTabs();
 }
@@ -842,37 +877,45 @@ function viewTreino(){
   const d = draft(day);
   const total = plan.ex.length, doneCount = plan.ex.filter(e => exDone(d, e)).length;
   const curIdx = plan.ex.findIndex(e => !exDone(d, e));
-  if(S.open[day] === undefined) S.open[day] = curIdx === -1 ? null : plan.ex[curIdx].id;
+  if(S.open[day] === undefined) S.open[day] = null;
   const anyDone = Object.values(d.log).some(a => a.some(x => x.done));
   let h = `<section class="day-head glass">${chips}<h2>${esc(plan.title)}</h2>${swapBar(day)}${plan.note ? `<p>${esc(plan.note)}</p>` : ''}
     <div class="steps"><div class="steps-top"><b>${doneCount === total ? 'Tudo concluído' : `Etapa ${Math.min(doneCount+1,total)} de ${total}`}</b><span>${Math.round(doneCount/total*100)}%</span></div>
     <div class="segs">${plan.ex.map((e,i) => `<div class="seg ${exDone(d,e)?'on':''} ${i===curIdx?'cur':''}"></div>`).join('')}</div></div></section>${futCard(day)}`;
-  plan.ex.forEach((ex, i) => {
-    const sets = exSets(d, ex), complete = exDone(d, ex), open = S.open[day] === ex.id;
-    const doneSets = sets.filter(s => s.done).length;
+  /* lista compacta: uma linha por exercício (miniatura do GIF ou número); tocar abre o painel de baixo (2026-11-26) */
+  h += `<div class="exlist">` + plan.ex.map((ex, i) => {
+    const sets = exSets(d, ex), complete = exDone(d, ex), doneSets = sets.filter(s => s.done).length, g = exGif(ex);
+    return `<button class="exr glass ${complete?'complete':''} ${i===curIdx?'cur':''}" data-act="open" data-ex="${ex.id}">
+      ${g ? `<span class="exr-g"><img src="${g}" alt="" onerror="this.parentNode.outerHTML='<span class=&quot;ex-st&quot;>${i+1}</span>'">${complete ? `<i>${ICON.check}</i>` : ''}</span>` : `<span class="ex-st">${complete ? ICON.check.replace('<svg','<svg width="15" height="15"') : i+1}</span>`}
+      <span class="exr-t"><b>${ex.star ? '★ ' : ''}${esc(ex.name)}</b><small>${ex.sets} × ${esc(ex.reps)}${complete ? ' · feito' : doneSets ? ` · ${doneSets}/${ex.sets}` : ''}</small></span>
+      <span class="exr-d" aria-hidden="true">${sets.map(s => `<i class="${s.done?'on':''}"></i>`).join('')}</span>
+    </button>`;
+  }).join('') + `</div>`;
+  const oi = plan.ex.findIndex(e => e.id === S.open[day]);
+  document.body.classList.toggle('exs-open', oi >= 0);
+  if(oi >= 0){
+    const ex = plan.ex[oi], i = oi, sets = exSets(d, ex), complete = exDone(d, ex), doneSets = sets.filter(s => s.done).length, g = exGif(ex);
     const last = lastFor(ex.id);
     const best = last && ex.kind !== 'time' ? last.reduce((a,b) => (b.w > a.w || (b.w === a.w && b.r > a.r)) ? b : a) : null;
-    h += `<article class="ex glass ${complete?'complete':''} ${open?'open':''}">
-      <button class="ex-h" data-act="open" data-ex="${ex.id}" aria-expanded="${open}">
-        <span class="ex-st">${complete ? ICON.check.replace('<svg','<svg width="15" height="15"') : i+1}</span>
-        <span class="ex-t"><div class="n">${ex.star ? '★ ' : ''}${esc(ex.name)}</div><div class="m">${ex.sets} × ${ex.reps}${doneSets && !complete ? ` · ${doneSets}/${ex.sets} feitas` : ''}</div><span class="hbar" aria-hidden="true"><i style="width:${Math.round(doneSets/ex.sets*100)}%"></i></span></span>
-        <span class="chev">▼</span>
-      </button>
-      <div class="ex-b">
-        ${exGif(ex) ? `<button class="exgif" data-act="gif" data-src="${exGif(ex)}" aria-label="Ampliar a animação do exercício"><img src="${exGif(ex)}" alt="Animação: ${esc(ex.name)}" onerror="this.parentNode.remove()"></button>` : ''}
-        ${ex.obs ? `<p class="obs">${esc(ex.obs)}</p>` : ''}
-        ${best ? `<div class="last">Última vez: <em>${best.w ? fmtNum(best.w) + ' kg × ' : ''}${best.r} reps</em></div>` : ''}
-        ${sugHtml(ex, d)}
-        ${ex.kind !== 'time' ? `<div class="wrow"><span class="lbl">Carga<small>Vale para todas as séries</small></span><label class="fld"><input inputmode="decimal" data-k="w" data-ex="${ex.id}" value="${esc(d.wt[ex.id] ?? '')}" placeholder="${best && best.w ? fmtNum(best.w) : '0'}" aria-label="Carga do exercício em kg"><span>kg</span></label></div>` : ''}
-        <div class="sprog"><div class="sprog-top"><span>${ex.sets} × ${esc(ex.reps)}</span><b>${doneSets} de ${ex.sets} séries</b></div>
-          <div class="sbar" role="progressbar" aria-valuenow="${doneSets}" aria-valuemin="0" aria-valuemax="${ex.sets}" aria-label="Séries concluídas">${sets.map(s => `<i class="${s.done?'on':''}"></i>`).join('')}</div></div>
-        <div class="srow">
-          ${complete ? `<button class="btn ok" disabled>${ICON.check}Exercício concluído</button>` : `<button class="btn" data-act="nextset" data-ex="${ex.id}">${ICON.check}Concluir série ${doneSets+1} de ${ex.sets}</button>`}
-          ${doneSets ? `<button class="tbtn undo" data-act="undoset" data-ex="${ex.id}">Desfazer</button>` : ''}
-        </div>
-        ${ex.kind === 'time' && !ex.yt ? '' : `<a class="yt" href="${exVideo(ex)}" target="_blank" rel="noopener">▶ ${ex.yt ? 'Ver execução' : 'Buscar execução no YouTube'}</a>`}
-      </div></article>`;
-  });
+    h += `<div class="exs ${S.sheetAnim ? 'anim' : ''}" role="dialog" aria-modal="true" aria-label="${esc(ex.name)}"><div class="exs-bd" data-act="exs-close"></div><div class="exs-p">
+      <div class="exs-grab" aria-hidden="true"></div>
+      <div class="exs-top"><div><b>${ex.star ? '★ ' : ''}${esc(ex.name)}</b><small>${i+1} de ${plan.ex.length} · ${ex.sets} × ${esc(ex.reps)}</small></div><button class="exs-x" data-act="exs-close" aria-label="Fechar">✕</button></div>
+      ${g ? `<button class="exgif" data-act="gif" data-src="${g}" aria-label="Ampliar a animação do exercício"><img src="${g}" alt="Animação: ${esc(ex.name)}" onerror="this.parentNode.remove()"></button>` : ''}
+      ${ex.obs ? `<p class="obs">${esc(ex.obs)}</p>` : ''}
+      ${best ? `<div class="last">Última vez: <em>${best.w ? fmtNum(best.w) + ' kg × ' : ''}${best.r} reps</em></div>` : ''}
+      ${sugHtml(ex, d)}
+      ${ex.kind !== 'time' ? `<div class="wrow"><span class="lbl">Carga<small>Vale para todas as séries</small></span><label class="fld"><input inputmode="decimal" data-k="w" data-ex="${ex.id}" value="${esc(d.wt[ex.id] ?? '')}" placeholder="${best && best.w ? fmtNum(best.w) : '0'}" aria-label="Carga do exercício em kg"><span>kg</span></label></div>` : ''}
+      <div class="sprog"><div class="sprog-top"><span>${ex.sets} × ${esc(ex.reps)}</span><b>${doneSets} de ${ex.sets} séries</b></div>
+        <div class="sbar" role="progressbar" aria-valuenow="${doneSets}" aria-valuemin="0" aria-valuemax="${ex.sets}" aria-label="Séries concluídas">${sets.map(s => `<i class="${s.done?'on':''}"></i>`).join('')}</div></div>
+      <div class="srow">
+        ${complete ? `<button class="btn ok" disabled>${ICON.check}Exercício concluído</button>` : `<button class="btn" data-act="nextset" data-ex="${ex.id}">${ICON.check}Concluir série ${doneSets+1} de ${ex.sets}</button>`}
+        ${doneSets ? `<button class="tbtn undo" data-act="undoset" data-ex="${ex.id}">Desfazer</button>` : ''}
+      </div>
+      ${g || (ex.kind === 'time' && !ex.yt) ? '' : `<a class="yt" href="${exVideo(ex)}" target="_blank" rel="noopener">▶ ${ex.yt ? 'Ver execução' : 'Buscar execução no YouTube'}</a>`}
+      <div class="exs-nav"><button data-act="exs-go" data-to="${i-1}" ${i===0?'disabled':''}>← Anterior</button><button data-act="exs-go" data-to="${i+1}" ${i===plan.ex.length-1?'disabled':''}>Próximo →</button></div>
+    </div></div>`;
+  }
+  S.sheetAnim = false;
   const pv = d.pain;
   if(hasInjury()) h += `<section class="card glass" style="margin-top:14px"><h3>${isTH() ? 'Joelho hoje' : 'Dor hoje · ' + esc(injuryName())}</h3><p class="hint">${isTH() ? 'Opcional. Ajuda a acompanhar o tendão ao longo do ciclo.' : 'Opcional. Ajuda a ver se o treino está piorando ou melhorando a dor.'}</p>
     <div class="pain-val" style="--pc:${pv==null?'var(--dim)':painColor(pv)}"><b>${pv==null?'–':pv}</b><span>${pv==null?'Arraste para registrar':'de 10'}</span></div>
@@ -1258,7 +1301,9 @@ document.addEventListener('click', e => {
   if(act === 'day'){ S.day = b.dataset.day; S.redo = false; render(); }
   else if(act === 'tab'){ S.tab = b.dataset.tab; render(); window.scrollTo({top:0}); }
   else if(act === 'gif'){ const o = document.createElement('div'); o.className = 'gifbig'; o.innerHTML = `<img src="${b.dataset.src}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); }
-  else if(act === 'open'){ S.open[S.day] = S.open[S.day] === b.dataset.ex ? null : b.dataset.ex; render(); }
+  else if(act === 'open'){ S.open[S.day] = b.dataset.ex; S.sheetAnim = true; render(); }
+  else if(act === 'exs-close'){ S.open[S.day] = null; render(); }
+  else if(act === 'exs-go'){ const ex = PLAN[S.day].ex[+b.dataset.to]; if(ex){ S.open[S.day] = ex.id; render(); const p = document.querySelector('.exs-p'); if(p) p.scrollTop = 0; } }
   else if(act === 'nextset' || act === 'undoset'){
     unlockAudio();
     const plan = PLAN[S.day], ex = plan.ex.find(x => x.id === b.dataset.ex);

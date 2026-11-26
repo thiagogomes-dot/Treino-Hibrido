@@ -224,3 +224,9 @@ Pedido do Thiago: mandar o mesmo link para um amigo, que faz o cadastro, manda o
 - Cartão aberto mostra o GIF; tocar amplia (`.gifbig`). Os GIFs do treino do dia já carregam ao abrir a tela (img em `display:none` também baixa).
 - sw.js guarda os GIFs no cache `treino-gifs` (não é apagado na troca de versão). Se o servidor cair, a imagem some sozinha (`onerror`) e fica só o YouTube.
 - Licença dos GIFs não confirmada (termos do ExerciseDB não abriram). Por isso não vai para perfis de amigos (Treino MP) por enquanto.
+
+## Tela do treino: lista compacta + painel (2026-11-26)
+- Escolha do Thiago entre 3 protótipos (opção 2). Cada exercício é uma linha `.exr` (miniatura do GIF ou número, nome, séries, bolinhas). Tocar abre o painel de baixo `.exs` com tudo do exercício e Anterior/Próximo.
+- `S.open[dia]` agora é o exercício do painel; não abre sozinho ao entrar. Concluir a última série passa o painel para o próximo exercício (lógica antiga do `nextset`).
+- Com painel aberto, `body.exs-open`: o cronômetro de descanso sobe para o topo e fica por cima.
+- Link do YouTube só aparece em exercício sem GIF (perfis de amigos e o `excentrico`).
